@@ -639,11 +639,24 @@ const updateCatData = (id, field, val) => {
 };
 
 /**
- * 新增分类
+ * 新增分类 - 自动生成 A01, B01 风格 ID
  */
 const addCat = () => {
+    // 获取现有分类的所有字母
+    const usedLetters = appData.categories.map(c => c.id.charAt(0).toUpperCase());
+    let nextLetter = 'A';
+    
+    if (usedLetters.length > 0) {
+        // 找到字母表中最后一位字母，取其下一个
+        const maxCharCode = Math.max(...usedLetters.map(l => l.charCodeAt(0)));
+        nextLetter = String.fromCharCode(maxCharCode + 1);
+    }
+
+    // 限制：字母表只有 26 个，如果超过 Z 则回退到随机（通常导航页够用了）
+    if (nextLetter > 'Z') nextLetter = 'Z' + Date.now().toString().slice(-2);
+
     appData.categories.push({
-        id: 'c' + Date.now(),
+        id: `${nextLetter}01`, // 默认生成 A01, B01 这种格式
         name: '新分类',
         icon: '📁',
         hidden: false
@@ -653,7 +666,7 @@ const addCat = () => {
 };
 
 /**
- * 确认编辑
+ * 确认编辑/新增条目 - 自动生成 A001, A002 风格 ID
  */
 const confirmEdit = () => {
     if (editingType === 'items') {
@@ -661,16 +674,32 @@ const confirmEdit = () => {
         const title = document.getElementById('f-title').value;
         const desc = document.getElementById('f-desc').value;
         const icon = document.getElementById('f-icon').value;
-        const catId = document.getElementById('f-cat').value;
+        const catId = document.getElementById('f-cat').value; // 所属分类 ID，如 A01
 
         if (editingId) {
+            // 编辑逻辑保持不变
             const idx = appData.items.findIndex(i => i.id === editingId);
             if (idx > -1) {
                 appData.items[idx] = { ...appData.items[idx], url, title, desc, icon, catId };
             }
         } else {
+            // 新增逻辑：根据分类 ID 生成条目 ID
+            const catLetter = catId.charAt(0).toUpperCase(); // 提取分类首字母
+            
+            // 筛选出该分类下现有的所有条目，并找到数字编号最大的一个
+            const siblingItems = appData.items.filter(i => i.catId === catId);
+            let nextNum = 1;
+            
+            if (siblingItems.length > 0) {
+                const ids = siblingItems.map(i => parseInt(i.id.slice(1)) || 0);
+                nextNum = Math.max(...ids) + 1;
+            }
+
+            // 格式化为 A001 格式 (padStart 用于补零)
+            const newId = `${catLetter}${String(nextNum).padStart(3, '0')}`;
+
             appData.items.push({
-                id: 'i' + Date.now(),
+                id: newId,
                 url,
                 title,
                 desc,
