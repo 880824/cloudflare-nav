@@ -10,7 +10,7 @@
 **基于 Cloudflare Pages 和 Workers KV 构建的纯云端、无服务器个人导航页。**<br>
 零代码基础，全程使用 Google Gemini 问答和生成代码，采用响应式毛玻璃（Glassmorphism）卡片设计，原生 JavaScript 开发，0 成本 5 分钟极速部署。
 
-[👉 在线预览 Demo 👈](https://111.222)
+[👉 在线预览 Demo 👈](https://cloudflare-nav-demo.pages.dev)
 
 </div>
 
