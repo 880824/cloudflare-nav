@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人网站导航</title>
+    
+    <!-- DNS 预解析与预连接（优化图标加载速度） -->
+    <link rel="dns-prefetch" href="https://favicon.im">
+    <link rel="preconnect" href="https://favicon.im" crossorigin>
+    <link rel="dns-prefetch" href="https://icons.duckduckgo.com">
+    <link rel="preconnect" href="https://icons.duckduckgo.com" crossorigin>
+    
+    <!-- 预加载外部资源 -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" as="style">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- PWA 配置 -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#111111">
+    <link rel="apple-touch-icon" href="https://icons.duckduckgo.com/ip3/github.com.ico">
+    
+    <!-- 拖拽排序库 -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js" defer></script>
+    
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <!-- Toast 提示 -->
+    <div id="toast">操作成功</div>
+    
+    <!-- 全局加载遮罩 -->
+    <div id="global-loading-overlay" class="modal" style="z-index: 9999;">
+        <div class="global-spinner"></div>
+        <div id="global-loading-text" style="color: #fff; font-size: 15px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">正在处理中...</div>
+    </div>
+
+    <div class="container">
+        <!-- 骨架屏（加载占位） -->
+        <div id="skeleton-screen">
+            <div class="skel-tabs">
+                <div class="skel-tab skel-anim"></div>
+                <div class="skel-tab skel-anim"></div>
+                <div class="skel-tab skel-anim"></div>
+            </div>
+            <div class="skel-grid">
+                <div class="skel-card skel-anim"></div>
+                <div class="skel-card skel-anim"></div>
+                <div class="skel-card skel-anim"></div>
+                <div class="skel-card skel-anim"></div>
+                <div class="skel-card skel-anim"></div>
+                <div class="skel-card skel-anim"></div>
+            </div>
+        </div>
+
+        <!-- 主内容区域 -->
+        <div id="main-content" style="display: none;">
+            <div id="layout-wrapper">
+                <!-- 分类标签栏 -->
+                <div class="tab-container">
+                    <div id="tabs" class="tabs"></div>
+                    <div id="cat-manage-area"></div>
+                </div>
+                <!-- 网站卡片容器 -->
+                <div id="grid-container"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 页脚缓存信息 -->
+    <div id="footer-cache" class="footer-info"></div>
+    
+    <!-- 浮动操作按钮 -->
+    <div class="fab">
+        <div id="admin-tools" style="display:contents"></div>
+    </div>
+    
+    <!-- 隐藏的文件输入框（用于导入配置） -->
+    <input type="file" id="import-file" accept=".json" style="display:none">
+
+    <!-- 登录验证弹窗 -->
+    <div id="auth-overlay" class="modal">
+        <div class="modal-content" style="text-align:center">
+            <button id="btn-close-auth" style="position:absolute; top:15px; right:15px; background:none; border:none; color:#777; cursor:pointer; font-size:24px">×</button>
+            <h3>管理验证</h3>
+            <input type="password" id="auth-input" placeholder="请输入Token" autocomplete="new-password" style="text-align:center; margin: 20px 0">
+            <button id="btn-login" class="tab-btn active" style="width:100%">进入后台</button>
+        </div>
+    </div>
+
+    <!-- 编辑弹窗 -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <button id="btn-close-edit" style="position:absolute; top:15px; right:15px; background:none; border:none; color:#777; cursor:pointer; font-size:24px">×</button>
+            <h4 id="edit-title" style="margin-bottom:20px; font-size:16px">编辑详情</h4>
+            <div id="edit-form-body"></div>
+            <button id="btn-confirm-edit" class="tab-btn active" style="width:100%; margin-top:10px">确认保存修改</button>
+        </div>
+    </div>
+
+    <!-- JavaScript 文件 -->
+    <script src="/assets/js/utils.js"></script>
+    <script src="/assets/js/app.js"></script>
+</body>
+</html>
