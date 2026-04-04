@@ -374,25 +374,34 @@ const renderNav = () => {
             new Sortable(grid, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                // 1. 确保带有 .card-add-new 类的元素（新增按钮）不参与拖拽
-                filter: '.card-add-new', 
-                onMove: function (evt) {
-                    // 2. 核心逻辑：禁止任何条目被拖拽到“新增”按钮之后
-                    // evt.related 是拖拽目标指向的相邻元素
-                    if (evt.related.classList.contains('card-add-new')) {
-                        return false; // 返回 false 即可阻止该次位置交换
-                    }
+                filter: '.card-add-new', // 不允许拖拽“新增”按钮
+                onMove: (evt) => {
+                    // 禁止移动到“新增”按钮之后
+                    if (evt.related.classList.contains('card-add-new')) return false;
                 },
                 onEnd: () => {
-                    // 获取当前网格中所有具有 data-id 的条目（自动排除了没有 data-id 的新增按钮）
+                    // 获取当前分类 DOM 中的最新 ID 顺序
                     const newIdOrder = Array.from(grid.querySelectorAll('.card[data-id]'))
                         .map(el => el.getAttribute('data-id'));
                     
-                    const otherCatItems = appData.items.filter(i => i.catId !== activeCat.id);
-                    const sortedCurrentItems = newIdOrder.map(id => appData.items.find(i => i.id === id));
+                    // 1. 获取当前分类中排序后的条目对象
+                    const currentCatItems = appData.items.filter(i => i.catId === activeCat.id);
+                    const sortedCurrentItems = newIdOrder.map(id => currentCatItems.find(i => i.id === id));
                     
-                    appData.items = [...otherCatItems, ...sortedCurrentItems];
-                    saveAll(true);
+                    // 2. 重新构建全局 items 列表，确保所有条目严格遵循分类顺序
+                    let newGlobalItems = [];
+                    appData.categories.forEach(cat => {
+                        if (cat.id === activeCat.id) {
+                            // 插入刚刚排序好的当前分类条目
+                            newGlobalItems.push(...sortedCurrentItems);
+                        } else {
+                            // 插入其他分类的条目（保持它们原有的相对顺序）
+                            newGlobalItems.push(...appData.items.filter(i => i.catId === cat.id));
+                        }
+                    });
+                    
+                    appData.items = newGlobalItems;
+                    saveAll(true); // 静默保存到后台
                 }
             });
         }
@@ -606,10 +615,20 @@ const manageCats = () => {
         handle: '.drag-handle',
         ghostClass: 'sortable-ghost',
         onEnd: () => {
-            const newIdOrder = Array.from(catListSort.querySelectorAll('.cat-item-row')).map(el => el.getAttribute('data-id'));
+            // 1. 更新分类顺序
+            const newIdOrder = Array.from(catListSort.querySelectorAll('.cat-item-row'))
+                .map(el => el.getAttribute('data-id'));
             appData.categories = newIdOrder.map(id => appData.categories.find(c => c.id === id));
+            
+            // 2. 关键：同步重排全局 items，使条目顺序与分类顺序完全对齐
+            let newGlobalItems = [];
+            appData.categories.forEach(cat => {
+                newGlobalItems.push(...appData.items.filter(i => i.catId === cat.id));
+            });
+            appData.items = newGlobalItems;
+
             renderNav();
-            saveAll(true);
+            saveAll(true); // 保存后，后台和导出文件都会是这个新顺序
         }
     });
 
@@ -852,20 +871,31 @@ const importConfig = (event) => {
 
 /**
  * 导出配置文件
+ * 现在导出的 JSON 将严格遵循：分类顺序 -> 分类内条目顺序
  */
 const exportConfig = () => {
-    const dataToExport = { ...appData };
-    delete dataToExport.isAdmin;
-    delete dataToExport.bgUrl;
+    // 导出前进行最后的顺序校验（可选，作为双重保险）
+    let cleanItems = [];
+    appData.categories.forEach(cat => {
+        cleanItems.push(...appData.items.filter(i => i.catId === cat.id));
+    });
+    appData.items = cleanItems;
+
+    const dataToExport = {
+        settings: appData.settings,
+        categories: appData.categories,
+        items: appData.items
+        // 自动排除 isAdmin 和 bgUrl 等运行时变量
+    };
 
     const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'nav-config-backup.json';
+    a.download = `nav-config-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast("配置已导出");
+    showToast("配置已按当前顺序导出");
 };
 
 /**
