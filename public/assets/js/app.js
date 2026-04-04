@@ -871,31 +871,45 @@ const importConfig = (event) => {
 
 /**
  * 导出配置文件
- * 现在导出的 JSON 将严格遵循：分类顺序 -> 分类内条目顺序
+ * 采用“紧凑对象”格式：每个分类或条目在 JSON 中占一行，既美观又直观
  */
 const exportConfig = () => {
-    // 导出前进行最后的顺序校验（可选，作为双重保险）
-    let cleanItems = [];
+    // 1. 确保导出顺序：分类顺序 -> 分类内条目顺序
+    let sortedItems = [];
     appData.categories.forEach(cat => {
-        cleanItems.push(...appData.items.filter(i => i.catId === cat.id));
+        const catItems = appData.items.filter(i => i.catId === cat.id);
+        sortedItems.push(...catItems);
     });
-    appData.items = cleanItems;
 
     const dataToExport = {
         settings: appData.settings,
         categories: appData.categories,
-        items: appData.items
-        // 自动排除 isAdmin 和 bgUrl 等运行时变量
+        items: sortedItems
     };
 
-    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+    // 2. 先生成标准的带 2 空格缩进的 JSON
+    let jsonStr = JSON.stringify(dataToExport, null, 2);
+
+    // 3. 使用正则魔法：将数组中的 {} 对象块压缩为一行
+    // 匹配规则：匹配以 { 开始，中间包含换行和缩进，最后以 } 结尾的块
+    // 通过回调函数将其中的换行符和多余空格替换为单个空格
+    jsonStr = jsonStr.replace(/\{[\s\S]*?\}/g, (match) => {
+        // 如果对象内部包含层级（比如 settings 里还有对象），可以根据需求调整
+        // 这里主要针对 categories 和 items 的扁平对象
+        return match.replace(/\n\s+/g, ' ');
+    });
+
+    // 4. 执行下载
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
     a.href = url;
-    a.download = `nav-config-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `nav-backup-${dateStr}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast("配置已按当前顺序导出");
+    
+    showToast("配置已按紧凑格式导出");
 };
 
 /**
