@@ -116,7 +116,7 @@
 2. 进入你刚才部署好的 Pages 项目详情页，点击 **设置 (Settings)** 选项卡
 3. **绑定 KV 数据库**：
    * 找到 **Functions** -> **KV 命名空间绑定 (KV namespace bindings)**
-   * 变量名称 (Variable name) **必须严格填入**: `page_nav`
+   * 变量名称 (Variable name) **必须严格填入**: `nav`
    * KV 命名空间 (KV namespace) 选择你刚才创建的数据库
 4. **设置管理员密码**：
    * 在左侧找到 **环境变量 (Environment variables)**
