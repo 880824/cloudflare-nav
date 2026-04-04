@@ -374,11 +374,23 @@ const renderNav = () => {
             new Sortable(grid, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                filter: '.dashed',
+                // 1. 确保带有 .card-add-new 类的元素（新增按钮）不参与拖拽
+                filter: '.card-add-new', 
+                onMove: function (evt) {
+                    // 2. 核心逻辑：禁止任何条目被拖拽到“新增”按钮之后
+                    // evt.related 是拖拽目标指向的相邻元素
+                    if (evt.related.classList.contains('card-add-new')) {
+                        return false; // 返回 false 即可阻止该次位置交换
+                    }
+                },
                 onEnd: () => {
-                    const newIdOrder = Array.from(grid.querySelectorAll('.card[data-id]')).map(el => el.getAttribute('data-id'));
+                    // 获取当前网格中所有具有 data-id 的条目（自动排除了没有 data-id 的新增按钮）
+                    const newIdOrder = Array.from(grid.querySelectorAll('.card[data-id]'))
+                        .map(el => el.getAttribute('data-id'));
+                    
                     const otherCatItems = appData.items.filter(i => i.catId !== activeCat.id);
                     const sortedCurrentItems = newIdOrder.map(id => appData.items.find(i => i.id === id));
+                    
                     appData.items = [...otherCatItems, ...sortedCurrentItems];
                     saveAll(true);
                 }
