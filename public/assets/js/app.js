@@ -1,6 +1,6 @@
 /**
  * ==========================================
- * app.js - 核心前端逻辑
+ * app.js - 核心前端逻辑 (已深度优化版)
  * CloudNav 个人导航页主程序
  * ==========================================
  */
@@ -27,6 +27,16 @@ let editingId = null;
 /** @type {number} Toast定时器 */
 let toastTimer = null;
 
+// ==================== 安全与工具函数 ====================
+
+/** 生成 SHA-256 哈希值 (用于前端密码加密) */
+const hashPassword = async (password) => {
+    const msgBuffer = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 // ==================== 初始化入口 ====================
 document.addEventListener('DOMContentLoaded', () => {
     // 注册 Service Worker（PWA 支持）
@@ -37,6 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // 全局监听卡片点击，统计访问频次 (用于生成"常去"分类)
+    document.getElementById('grid-container').addEventListener('click', (e) => {
+        const card = e.target.closest('.card');
+        const link = e.target.closest('a');
+        // 排除管理按钮和新增按钮的点击
+        if (card && link && !card.classList.contains('card-add-new') && !e.target.closest('.admin-actions')) {
+            const id = card.getAttribute('data-id');
+            let clicks = JSON.parse(localStorage.getItem('nav_clicks') || '{}');
+            clicks[id] = (clicks[id] || 0) + 1;
+            localStorage.setItem('nav_clicks', JSON.stringify(clicks));
+        }
+    });
+
     // 初始化应用
     init();
 });
@@ -45,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * 更新网格卡片宽度
- * @description 将配置中的卡片宽度注入到 CSS 变量
  */
 const updateGridWidth = () => {
     const width = (appData.settings && appData.settings.cardWidth) 
@@ -54,27 +76,18 @@ const updateGridWidth = () => {
     document.documentElement.style.setProperty('--card-w', width + 'px');
 };
 
-/**
- * 显示全局加载动画
- * @param {string} text - 加载提示文字
- */
+/** 显示全局加载动画 */
 const showLoader = (text = '正在处理中...') => {
     document.getElementById('global-loading-text').innerText = text;
     document.getElementById('global-loading-overlay').style.display = 'flex';
 };
 
-/**
- * 隐藏全局加载动画
- */
+/** 隐藏全局加载动画 */
 const hideLoader = () => {
     document.getElementById('global-loading-overlay').style.display = 'none';
 };
 
-/**
- * 显示Toast提示
- * @param {string} msg - 提示消息
- * @param {string} color - 背景颜色（默认绿色）
- */
+/** 显示Toast提示 */
 const showToast = (msg = "操作成功", color = "#27ae60") => {
     const toast = document.getElementById('toast');
     toast.innerText = msg;
@@ -84,20 +97,13 @@ const showToast = (msg = "操作成功", color = "#27ae60") => {
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 };
 
-/**
- * 切换骨架屏显示状态
- * @param {boolean} show - 是否显示骨架屏
- */
+/** 切换骨架屏显示状态 */
 const toggleSkeleton = (show) => {
     document.getElementById('skeleton-screen').style.display = show ? 'block' : 'none';
     document.getElementById('main-content').style.display = show ? 'none' : 'block';
 };
 
-/**
- * 加载背景图片
- * @param {string} url - 图片URL
- * @description 使用缓存机制优化背景加载体验
- */
+/** 加载背景图片 (带缓存支持) */
 const loadBackground = async (url) => {
     if (!url) return;
     try {
@@ -105,13 +111,11 @@ const loadBackground = async (url) => {
         const cache = await caches.open(bgCacheName);
         const cachedResponse = await cache.match(url);
 
-        // 如果有缓存，立即显示
         if (cachedResponse) {
             const blob = await cachedResponse.blob();
             document.body.style.backgroundImage = `url('${URL.createObjectURL(blob)}')`;
         }
 
-        // 后台更新缓存
         fetch(url, { mode: 'cors' }).then(async response => {
             if (response.ok) {
                 await cache.put(url, response.clone());
@@ -122,7 +126,6 @@ const loadBackground = async (url) => {
             }
         }).catch(() => { });
     } catch (e) {
-        // 降级方案：直接设置背景
         const img = new Image();
         img.src = url;
         img.onload = () => {
@@ -131,11 +134,23 @@ const loadBackground = async (url) => {
     }
 };
 
-/**
- * 初始化应用
- * @param {boolean} forceRender - 是否强制重新渲染
- * @description 从API获取数据并渲染界面
- */
+/** 应用背景配置（自定义或Bing） */
+const applyBackgroundConfig = () => {
+    const customBg = appData.settings?.bgUrl;
+    if (customBg) {
+        if (customBg.startsWith('#') || customBg.startsWith('rgb')) {
+            document.body.style.backgroundImage = 'none';
+            document.body.style.backgroundColor = customBg;
+        } else {
+            loadBackground(customBg);
+        }
+    } else if (appData.bgUrl) {
+        // 留空则使用后端接口返回的 Bing 壁纸
+        loadBackground(appData.bgUrl);
+    }
+};
+
+/** 初始化应用数据 */
 const init = async (forceRender = false) => {
     let fetchUrl = '/api/config';
     const gridContainer = document.getElementById('grid-container');
@@ -152,7 +167,7 @@ const init = async (forceRender = false) => {
             toggleSkeleton(false);
             renderTools();
             renderNav();
-            if (appData.bgUrl) loadBackground(appData.bgUrl);
+            applyBackgroundConfig(); // 使用新的背景应用逻辑
             if (appData.lastUpdated) {
                 document.getElementById('footer-cache').innerText = '最后同步：' + utils.escapeHTML(appData.lastUpdated);
             }
@@ -191,9 +206,8 @@ const init = async (forceRender = false) => {
         updateGridWidth();
         const isAdminChanged = initialIsAdmin !== isAdmin;
 
-        if (appData.bgUrl) loadBackground(appData.bgUrl);
+        applyBackgroundConfig(); // 使用新的背景应用逻辑
 
-        // 数据变化或管理员状态变化时重新渲染
         if (forceRender || isDataChanged || isAdminChanged || !localCache) {
             toggleSkeleton(false);
             renderTools();
@@ -216,16 +230,12 @@ const init = async (forceRender = false) => {
     }
 };
 
-/**
- * 渲染管理工具按钮
- * @description 根据管理员状态显示不同的操作按钮
- */
+/** 渲染管理工具按钮 */
 const renderTools = () => {
     const adminToolsContainer = document.getElementById('admin-tools');
     const catManageArea = document.getElementById('cat-manage-area');
     adminToolsContainer.innerHTML = '';
 
-    // 创建浮动操作按钮
     const createFab = (text, bg, action) => {
         const btn = document.createElement('div');
         btn.className = 'fab-btn';
@@ -240,7 +250,6 @@ const renderTools = () => {
     };
 
     if (isAdmin) {
-        // 管理员模式
         document.title = "管理后台";
         catManageArea.innerHTML = `<button class="manage-cat-btn" id="btn-manage-cats"><i class="ri-settings-line"></i> 偏好设置</button>`;
         document.getElementById('btn-manage-cats').addEventListener('click', manageCats);
@@ -251,7 +260,6 @@ const renderTools = () => {
         createFab('导出', null, exportConfig);
         createFab('默认', null, resetConfig);
     } else {
-        // 访客模式
         document.title = "个人导航";
         catManageArea.innerHTML = '';
         createFab('管理', null, () => {
@@ -261,18 +269,24 @@ const renderTools = () => {
     }
 };
 
-/**
- * 渲染导航内容
- * @description 渲染分类标签和网站卡片
- */
+/** 渲染导航内容 (包含"常去"智能分类) */
 const renderNav = () => {
     const tabs = document.getElementById('tabs');
     const container = document.getElementById('grid-container');
     tabs.innerHTML = '';
     container.innerHTML = '';
 
-    // 过滤隐藏分类（非管理员模式）
-    const cats = isAdmin ? appData.categories : appData.categories.filter(c => !c.hidden);
+    // 获取本地点击数据，判断是否有常去内容
+    const clickData = JSON.parse(localStorage.getItem('nav_clicks') || '{}');
+    const hasFrequent = Object.keys(clickData).length > 0;
+
+    // 过滤隐藏分类（使用解构避免污染原数据）
+    let cats = isAdmin ? [...appData.categories] : appData.categories.filter(c => !c.hidden);
+    
+    // 注入“常去”虚拟分类
+    if (hasFrequent) {
+        cats.unshift({ id: 'VIRTUAL_FREQ', name: '常去', icon: '⭐', hidden: false });
+    }
 
     // 设置默认激活分类
     if (cats.length > 0 && !activeCatId) activeCatId = cats[0].id;
@@ -290,7 +304,6 @@ const renderNav = () => {
         tabs.appendChild(btn);
     });
 
-    // 渲染当前分类的网站卡片
     const activeCat = cats.find(c => c.id === activeCatId);
     if (activeCat) {
         const grid = document.createElement('div');
@@ -310,7 +323,6 @@ const renderNav = () => {
                 if (action === 'delete') deleteObj('items', targetId);
                 return;
             }
-            // 新增按钮
             if (e.target.closest('.card-add-new')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -319,8 +331,18 @@ const renderNav = () => {
         });
 
         const fragment = document.createDocumentFragment();
-        // 过滤隐藏项目（非管理员模式）
-        let catItems = appData.items.filter(i => i.catId === activeCat.id && (isAdmin || !i.hidden));
+        
+        // 针对虚拟分类与普通分类的数据过滤逻辑
+        let catItems = [];
+        if (activeCat.id === 'VIRTUAL_FREQ') {
+            const allAvailableItems = appData.items.filter(i => isAdmin || !i.hidden);
+            catItems = allAvailableItems
+                .filter(i => clickData[i.id] > 0)
+                .sort((a, b) => (clickData[b.id] || 0) - (clickData[a.id] || 0))
+                .slice(0, 12); // 常去网站最多取前12个
+        } else {
+            catItems = appData.items.filter(i => i.catId === activeCat.id && (isAdmin || !i.hidden));
+        }
 
         // 渲染卡片
         catItems.forEach((item) => {
@@ -328,7 +350,6 @@ const renderNav = () => {
             card.className = 'card' + (item.hidden ? ' hidden-item' : '');
             card.setAttribute('data-id', utils.escapeHTML(item.id));
 
-            // 图标处理（URL 或 Emoji）
             let fallbackAttr = `onerror="this.outerHTML='<span class=\\'emoji-icon\\'>'+window.utils.getRandomEmoji()+'</span>';"`;
             const safeIcon = utils.escapeHTML(item.icon);
             const iconHtml = (item.icon && item.icon.startsWith('http'))
@@ -339,13 +360,12 @@ const renderNav = () => {
             const safeTitle = utils.escapeHTML(item.title);
             const safeDesc = utils.escapeHTML(item.desc || '');
 
-            // 提示框内容
             const tooltip = safeDesc ? `${safeTitle}\n${safeDesc}` : safeTitle;
             card.setAttribute('data-tooltip', tooltip);
 
-            // 管理员操作按钮
             let adminHtml = '';
-            if (isAdmin) {
+            // 如果是常去分类，不显示编辑/隐藏操作按钮，防止误操作错乱
+            if (isAdmin && activeCat.id !== 'VIRTUAL_FREQ') {
                 adminHtml = `<div class="admin-actions">
                     <button class="action-mini" data-action="toggleHide" data-id="${utils.escapeHTML(item.id)}"><i class="ri-eye-${item.hidden ? 'off-' : ''}line"></i></button>
                     <button class="action-mini" data-action="edit" data-id="${utils.escapeHTML(item.id)}"><i class="ri-edit-line"></i></button>
@@ -357,8 +377,8 @@ const renderNav = () => {
             fragment.appendChild(card);
         });
 
-        // 新增卡片按钮（管理员模式）
-        if (isAdmin) {
+        // 新增卡片按钮（常去分类中不显示新增）
+        if (isAdmin && activeCat.id !== 'VIRTUAL_FREQ') {
             const addCard = document.createElement('div');
             addCard.className = 'card card-add-new';
             addCard.style.borderStyle = 'dashed';
@@ -369,39 +389,33 @@ const renderNav = () => {
         grid.appendChild(fragment);
         container.appendChild(grid);
 
-        // 初始化拖拽排序（管理员模式）
-        if (isAdmin && typeof Sortable !== 'undefined') {
+        // 初始化拖拽排序（常去分类禁用拖拽）
+        if (isAdmin && typeof Sortable !== 'undefined' && activeCat.id !== 'VIRTUAL_FREQ') {
             new Sortable(grid, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                filter: '.card-add-new', // 不允许拖拽“新增”按钮
+                filter: '.card-add-new',
                 onMove: (evt) => {
-                    // 禁止移动到“新增”按钮之后
                     if (evt.related.classList.contains('card-add-new')) return false;
                 },
                 onEnd: () => {
-                    // 获取当前分类 DOM 中的最新 ID 顺序
                     const newIdOrder = Array.from(grid.querySelectorAll('.card[data-id]'))
                         .map(el => el.getAttribute('data-id'));
                     
-                    // 1. 获取当前分类中排序后的条目对象
                     const currentCatItems = appData.items.filter(i => i.catId === activeCat.id);
                     const sortedCurrentItems = newIdOrder.map(id => currentCatItems.find(i => i.id === id));
                     
-                    // 2. 重新构建全局 items 列表，确保所有条目严格遵循分类顺序
                     let newGlobalItems = [];
                     appData.categories.forEach(cat => {
                         if (cat.id === activeCat.id) {
-                            // 插入刚刚排序好的当前分类条目
                             newGlobalItems.push(...sortedCurrentItems);
                         } else {
-                            // 插入其他分类的条目（保持它们原有的相对顺序）
                             newGlobalItems.push(...appData.items.filter(i => i.catId === cat.id));
                         }
                     });
                     
                     appData.items = newGlobalItems;
-                    saveAll(true); // 静默保存到后台
+                    saveAll(true);
                 }
             });
         }
@@ -410,21 +424,13 @@ const renderNav = () => {
 
 // ==================== 编辑相关函数 ====================
 
-/**
- * 防抖处理的URL输入处理
- */
 const debouncedHandleUrlInput = utils.debounce((val) => handleUrlInput(val), 500);
 
-/**
- * 打开项目编辑弹窗
- * @param {string} id - 项目ID（空表示新增）
- * @param {string} catId - 所属分类ID
- */
+/** 打开项目编辑弹窗 */
 const openItemEdit = (id, catId) => {
     editingType = 'items';
     editingId = id;
 
-    // 获取或创建默认项目数据
     const item = id
         ? appData.items.find(i => i.id === id)
         : { id: 'i' + Date.now(), title: '', url: '', desc: '', icon: '', catId: catId };
@@ -434,12 +440,11 @@ const openItemEdit = (id, catId) => {
     const safeIcon = utils.escapeHTML(item.icon);
     const safeDesc = utils.escapeHTML(item.desc || '');
 
-    // 生成编辑表单HTML
     document.getElementById('edit-form-body').innerHTML = `
         <div class="form-row"><label>网站 URL</label><input id="f-url" value="${safeUrl}"></div>
         <div class="form-row"><label>网站名称</label><input id="f-title" value="${safeTitle}"></div>
         <div class="form-row"><label>网站说明</label><input id="f-desc" value="${safeDesc}" placeholder="选填，鼠标悬停时显示"></div>
-        <div class="form-row"><label>图标设置</label>
+        <div class="form-row"><label>当前图标</label>
             <div style="display:flex; width:100%; align-items:center;">
                 <input id="f-icon" value="${safeIcon}" placeholder="可手动填入，或选择下方智能接口">
                 <div id="preview-box" class="preview-container"></div>
@@ -459,14 +464,23 @@ const openItemEdit = (id, catId) => {
                 <div class="preview-container" style="background:rgba(0,0,0,0.3);"><img id="img-fav2" src="" loading="lazy"></div>
             </div>
         </div>
-        <div class="form-row"><label>归属分类</label><select id="f-cat">${appData.categories.map(c => `<option value="${utils.escapeHTML(c.id)}" ${c.id === item.catId ? 'selected' : ''}>${utils.escapeHTML(c.name)}</option>`).join('')}</select></div>
+        <div class="form-row"><label style="font-size:12px; font-weight:normal; color:#999;">图标搜索</label>
+            <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
+                <div style="display:flex; gap:5px;">
+                    <input id="iconify-search" placeholder="输入英文关键词, 如 github" style="flex:1;">
+                    <button type="button" class="manage-cat-btn" id="btn-iconify-search" style="border: 1px solid var(--primary); color: white; background: var(--primary);">搜索</button>
+                </div>
+                <div id="iconify-results" style="display:flex; flex-wrap:wrap; gap:5px; max-height:80px; overflow-y:auto; margin-top:5px;"></div>
+            </div>
+        </div>
+        <div class="form-row"><label>归属分类</label>
+            <select id="f-cat">${appData.categories.map(c => `<option value="${utils.escapeHTML(c.id)}" ${c.id === item.catId ? 'selected' : ''}>${utils.escapeHTML(c.name)}</option>`).join('')}</select>
+        </div>
     `;
 
-    // 绑定事件
     document.getElementById('f-url').addEventListener('input', (e) => debouncedHandleUrlInput(e.target.value));
     document.getElementById('f-icon').addEventListener('input', (e) => updatePreview(e.target.value));
 
-    // 图标选择事件
     ['1', '2'].forEach(num => {
         const opt = document.getElementById('opt-fav' + num);
         const txt = document.getElementById('txt-fav' + num);
@@ -479,26 +493,46 @@ const openItemEdit = (id, catId) => {
         });
     });
 
+    // Iconify 搜索事件绑定
+    document.getElementById('btn-iconify-search').addEventListener('click', async () => {
+        const query = document.getElementById('iconify-search').value.trim();
+        if (!query) return;
+        const resBox = document.getElementById('iconify-results');
+        resBox.innerHTML = '<span style="font-size:12px;">搜索中...</span>';
+        try {
+            const req = await fetch(`https://api.iconify.design/search?query=${query}&limit=12`);
+            const data = await req.json();
+            resBox.innerHTML = '';
+            if (data.icons && data.icons.length > 0) {
+                data.icons.forEach(iconName => {
+                    const imgUrl = `https://api.iconify.design/${iconName}.svg`;
+                    const img = document.createElement('img');
+                    img.src = imgUrl;
+                    img.style.cssText = 'width:30px; height:30px; cursor:pointer; background:rgba(255,255,255,0.1); border-radius:6px; padding:4px; transition: 0.2s;';
+                    img.onmouseover = () => img.style.background = 'rgba(255,255,255,0.3)';
+                    img.onmouseout = () => img.style.background = 'rgba(255,255,255,0.1)';
+                    img.onclick = () => selectIcon(imgUrl);
+                    resBox.appendChild(img);
+                });
+            } else {
+                resBox.innerHTML = '<span style="font-size:12px; color:#aaa;">未找到结果</span>';
+            }
+        } catch (e) {
+            resBox.innerHTML = '<span style="font-size:12px; color:#e74c3c;">网络或接口错误</span>';
+        }
+    });
+
     updatePreview(item.icon);
     if (item.url) handleUrlInput(item.url, false);
     document.getElementById('edit-modal').style.display = 'flex';
 };
 
-/**
- * 选择图标
- * @param {string} url - 图标URL
- */
 const selectIcon = (url) => {
     if (!url) return;
     document.getElementById('f-icon').value = url;
     updatePreview(url);
 };
 
-/**
- * 处理URL输入（自动获取图标）
- * @param {string} url - 网站URL
- * @param {boolean} autoSelect - 是否自动选择第一个图标
- */
 const handleUrlInput = (url, autoSelect = true) => {
     if (url && url.startsWith('http')) {
         try {
@@ -535,10 +569,6 @@ const handleUrlInput = (url, autoSelect = true) => {
     }
 };
 
-/**
- * 更新图标预览
- * @param {string} val - 图标值（URL或Emoji）
- */
 const updatePreview = (val) => {
     const box = document.getElementById('preview-box');
     if (!val) {
@@ -550,24 +580,24 @@ const updatePreview = (val) => {
         let fallbackAttr = `onerror="this.outerHTML='<span class=\\'emoji-icon\\'>'+window.utils.getRandomEmoji()+'</span>';"`;
         box.innerHTML = `<img src="${safeVal}" loading="lazy" ${fallbackAttr}>`;
     } else {
-        box.innerHTML = safeVal;
+        box.innerHTML = `<span class="emoji-icon">${safeVal}</span>`;
     }
 };
 
-/**
- * 管理分类设置
- */
+/** 偏好设置管理弹窗 */
 const manageCats = () => {
     editingType = 'cats';
     document.getElementById('edit-title').innerText = '偏好与分类设置';
 
-    const currentWidth = (appData.settings && appData.settings.cardWidth)
-        ? appData.settings.cardWidth
-        : 85;
+    const currentWidth = (appData.settings && appData.settings.cardWidth) ? appData.settings.cardWidth : 85;
+    const currentBg = (appData.settings && appData.settings.bgUrl) ? appData.settings.bgUrl : '';
 
     document.getElementById('edit-form-body').innerHTML = `
-        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+        <div class="form-row" style="margin-bottom: 10px;">
             <label>网格宽度</label><input type="number" id="setting-width" value="${currentWidth}"><span style="color:#666; margin-left:10px;">px</span>
+        </div>
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+            <label>自定义背景</label><input type="text" id="setting-bg" value="${utils.escapeHTML(currentBg)}" placeholder="填URL或纯色(如#222), 留空使用Bing">
         </div>
         <div id="cat-list-sort" style="max-height: 300px; overflow-y: auto;">
             ${appData.categories.map((c) => `
@@ -583,8 +613,12 @@ const manageCats = () => {
         <button class="tab-btn active" id="btn-add-cat" style="width:100%; margin-top:15px">+ 新增分类</button>
     `;
 
-    // 绑定事件
     document.getElementById('setting-width').addEventListener('input', (e) => changeCardWidth(e.target.value));
+    document.getElementById('setting-bg').addEventListener('change', (e) => {
+        if (!appData.settings) appData.settings = {};
+        appData.settings.bgUrl = e.target.value.trim();
+        applyBackgroundConfig();
+    });
     document.getElementById('btn-add-cat').addEventListener('click', addCat);
 
     const catListSort = document.getElementById('cat-list-sort');
@@ -609,18 +643,15 @@ const manageCats = () => {
         }
     });
 
-    // 分类拖拽排序
     new Sortable(catListSort, {
         animation: 150,
         handle: '.drag-handle',
         ghostClass: 'sortable-ghost',
         onEnd: () => {
-            // 1. 更新分类顺序
             const newIdOrder = Array.from(catListSort.querySelectorAll('.cat-item-row'))
                 .map(el => el.getAttribute('data-id'));
             appData.categories = newIdOrder.map(id => appData.categories.find(c => c.id === id));
             
-            // 2. 关键：同步重排全局 items，使条目顺序与分类顺序完全对齐
             let newGlobalItems = [];
             appData.categories.forEach(cat => {
                 newGlobalItems.push(...appData.items.filter(i => i.catId === cat.id));
@@ -628,54 +659,36 @@ const manageCats = () => {
             appData.items = newGlobalItems;
 
             renderNav();
-            saveAll(true); // 保存后，后台和导出文件都会是这个新顺序
+            saveAll(true); 
         }
     });
 
     document.getElementById('edit-modal').style.display = 'flex';
 };
 
-/**
- * 修改卡片宽度
- * @param {string} val - 宽度值（像素）
- */
 const changeCardWidth = (val) => {
     if (!appData.settings) appData.settings = {};
     appData.settings.cardWidth = parseInt(val) || 85;
     updateGridWidth();
 };
 
-/**
- * 更新分类数据
- * @param {string} id - 分类ID
- * @param {string} field - 字段名
- * @param {string} val - 新值
- */
 const updateCatData = (id, field, val) => {
     const cat = appData.categories.find(c => c.id === id);
     if (cat) cat[field] = val;
     renderNav();
 };
 
-/**
- * 新增分类 - 自动生成 A01, B01 风格 ID
- */
 const addCat = () => {
-    // 获取现有分类的所有字母
     const usedLetters = appData.categories.map(c => c.id.charAt(0).toUpperCase());
     let nextLetter = 'A';
-    
     if (usedLetters.length > 0) {
-        // 找到字母表中最后一位字母，取其下一个
         const maxCharCode = Math.max(...usedLetters.map(l => l.charCodeAt(0)));
         nextLetter = String.fromCharCode(maxCharCode + 1);
     }
-
-    // 限制：字母表只有 26 个，如果超过 Z 则回退到随机（通常导航页够用了）
     if (nextLetter > 'Z') nextLetter = 'Z' + Date.now().toString().slice(-2);
 
     appData.categories.push({
-        id: `${nextLetter}01`, // 默认生成 A01, B01 这种格式
+        id: `${nextLetter}01`,
         name: '新分类',
         icon: '📁',
         hidden: false
@@ -684,39 +697,28 @@ const addCat = () => {
     renderNav();
 };
 
-/**
- * 确认编辑/新增条目 - 自动生成 A001, A002 风格 ID
- */
 const confirmEdit = () => {
     if (editingType === 'items') {
         const url = document.getElementById('f-url').value;
         const title = document.getElementById('f-title').value;
         const desc = document.getElementById('f-desc').value;
         const icon = document.getElementById('f-icon').value;
-        const catId = document.getElementById('f-cat').value; // 所属分类 ID，如 A01
+        const catId = document.getElementById('f-cat').value;
 
         if (editingId) {
-            // 编辑逻辑保持不变
             const idx = appData.items.findIndex(i => i.id === editingId);
             if (idx > -1) {
                 appData.items[idx] = { ...appData.items[idx], url, title, desc, icon, catId };
             }
         } else {
-            // 新增逻辑：根据分类 ID 生成条目 ID
-            const catLetter = catId.charAt(0).toUpperCase(); // 提取分类首字母
-            
-            // 筛选出该分类下现有的所有条目，并找到数字编号最大的一个
+            const catLetter = catId.charAt(0).toUpperCase();
             const siblingItems = appData.items.filter(i => i.catId === catId);
             let nextNum = 1;
-            
             if (siblingItems.length > 0) {
                 const ids = siblingItems.map(i => parseInt(i.id.slice(1)) || 0);
                 nextNum = Math.max(...ids) + 1;
             }
-
-            // 格式化为 A001 格式 (padStart 用于补零)
             const newId = `${catLetter}${String(nextNum).padStart(3, '0')}`;
-
             appData.items.push({
                 id: newId,
                 url,
@@ -733,11 +735,6 @@ const confirmEdit = () => {
     saveAll(false);
 };
 
-/**
- * 切换隐藏状态
- * @param {string} type - 类型（items/categories）
- * @param {string} id - 项目ID
- */
 const toggleHide = (type, id) => {
     const item = appData[type].find(o => o.id === id);
     if (item) item.hidden = !item.hidden;
@@ -746,11 +743,6 @@ const toggleHide = (type, id) => {
     if (type === 'categories') manageCats();
 };
 
-/**
- * 删除项目
- * @param {string} type - 类型（items/categories）
- * @param {string} id - 项目ID
- */
 const deleteObj = (type, id) => {
     if (confirm('确定删除？')) {
         const idx = appData[type].findIndex(o => o.id === id);
@@ -763,12 +755,16 @@ const deleteObj = (type, id) => {
 
 // ==================== 认证相关 ====================
 
-/**
- * 管理员登录
- */
 const doLogin = async () => {
     showLoader('正在验证管理员身份...');
-    sysToken = document.getElementById('auth-input').value;
+    const rawPwd = document.getElementById('auth-input').value;
+    if (!rawPwd) {
+        hideLoader();
+        return showToast("请输入密码", "#e67e22");
+    }
+    
+    // 使用哈希值代替明文
+    sysToken = await hashPassword(rawPwd);
     localStorage.setItem('nav_token', sysToken);
     document.getElementById('auth-overlay').style.display = 'none';
 
@@ -776,18 +772,15 @@ const doLogin = async () => {
 
     hideLoader();
     if (!isAdmin) {
-        showToast("验证失败，Token 不正确", "#e74c3c");
+        showToast("验证失败，密码不正确", "#e74c3c");
         localStorage.removeItem('nav_token');
         sysToken = '';
-        document.getElementById('auth-input').value = '';
     } else {
         showToast("已进入管理模式");
+        document.getElementById('auth-input').value = ''; 
     }
 };
 
-/**
- * 管理员登出
- */
 const doLogout = async () => {
     showLoader('正在退出管理模式...');
     await new Promise(r => setTimeout(r, 600));
@@ -804,10 +797,6 @@ const doLogout = async () => {
 
 // ==================== 数据操作 ====================
 
-/**
- * 保存所有数据
- * @param {boolean} silent - 是否静默模式
- */
 const saveAll = async (silent = false) => {
     if (!silent) showLoader('正在同步配置中...');
 
@@ -840,10 +829,6 @@ const saveAll = async (silent = false) => {
     }
 };
 
-/**
- * 导入配置文件
- * @param {Event} event - 文件选择事件
- */
 const importConfig = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -869,12 +854,7 @@ const importConfig = (event) => {
     event.target.value = '';
 };
 
-/**
- * 导出配置文件
- * 采用“紧凑对象”格式：每个分类或条目在 JSON 中占一行，既美观又直观
- */
 const exportConfig = () => {
-    // 1. 确保导出顺序：分类顺序 -> 分类内条目顺序
     let sortedItems = [];
     appData.categories.forEach(cat => {
         const catItems = appData.items.filter(i => i.catId === cat.id);
@@ -887,19 +867,11 @@ const exportConfig = () => {
         items: sortedItems
     };
 
-    // 2. 先生成标准的带 2 空格缩进的 JSON
     let jsonStr = JSON.stringify(dataToExport, null, 2);
-
-    // 3. 使用正则魔法：将数组中的 {} 对象块压缩为一行
-    // 匹配规则：匹配以 { 开始，中间包含换行和缩进，最后以 } 结尾的块
-    // 通过回调函数将其中的换行符和多余空格替换为单个空格
     jsonStr = jsonStr.replace(/\{[\s\S]*?\}/g, (match) => {
-        // 如果对象内部包含层级（比如 settings 里还有对象），可以根据需求调整
-        // 这里主要针对 categories 和 items 的扁平对象
         return match.replace(/\n\s+/g, ' ');
     });
 
-    // 4. 执行下载
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -912,9 +884,6 @@ const exportConfig = () => {
     showToast("配置已按紧凑格式导出");
 };
 
-/**
- * 重置为默认配置
- */
 const resetConfig = async () => {
     if (!confirm('确定恢复默认配置？此操作不可撤销。')) return;
 
@@ -939,9 +908,6 @@ const resetConfig = async () => {
     }
 };
 
-/**
- * 关闭编辑弹窗
- */
 const closeModal = () => {
     document.getElementById('edit-modal').style.display = 'none';
 };

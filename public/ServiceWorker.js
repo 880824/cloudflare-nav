@@ -52,34 +52,37 @@ self.addEventListener('activate', event => {
 
 /**
  * 请求拦截事件
- * @description 实现 Stale-While-Revalidate 策略
- * - 有缓存立即返回（秒开体验）
- * - 同时后台更新缓存（下次访问使用最新资源）
- * - API 请求不走 SW 缓存，由前端 localStorage 控制
  */
 self.addEventListener('fetch', event => {
   // API 请求不走 SW 缓存
-  if (event.request.url.includes('/api/')) {
+  if (event.request.url.includes('/api/')) return;
+
+  // 1. 对于 HTML 页面请求，采用 Network First (网络优先)
+  if (event.request.mode === 'navigate' || event.request.headers.get('accept').includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).then(networkResponse => {
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      }).catch(() => {
+        // 断网时降级到缓存
+        return caches.match(event.request);
+      })
+    );
     return;
   }
 
+  // 2. 其他静态资源 (CSS/JS/图片) 保持 Stale-While-Revalidate (缓存优先并后台更新)
   event.respondWith(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.match(event.request).then(cachedResponse => {
-        // 发起网络请求获取最新资源
-        const fetchPromise = fetch(event.request).then(networkResponse => {
-          // 将最新响应克隆并更新到缓存
-          if (networkResponse.ok) {
-            cache.put(event.request, networkResponse.clone());
-          }
-          return networkResponse;
-        }).catch(() => {
-          // 断网时静默处理
-        });
-
-        // 核心：有缓存立即返回，否则等待网络请求
-        return cachedResponse || fetchPromise;
-      });
+    caches.match(event.request).then(cachedResponse => {
+      const fetchPromise = fetch(event.request).then(networkResponse => {
+        if (networkResponse.ok) {
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+        }
+        return networkResponse;
+      }).catch(() => {});
+      return cachedResponse || fetchPromise;
     })
   );
 });
