@@ -757,13 +757,16 @@ const deleteObj = (type, id) => {
 
 const doLogin = async () => {
     showLoader('正在验证管理员身份...');
-    const rawPwd = document.getElementById('auth-input').value;
+    
+    // 修复：使用 .trim() 强行去除首尾可能因复制粘贴或手机输入法带入的隐形空格
+    const rawPwd = document.getElementById('auth-input').value.trim();
+    
     if (!rawPwd) {
         hideLoader();
         return showToast("请输入密码", "#e67e22");
     }
     
-    // 使用哈希值代替明文
+    // 前端将其转为哈希值后存储并发送，保证不在本地暴露明文
     sysToken = await hashPassword(rawPwd);
     localStorage.setItem('nav_token', sysToken);
     document.getElementById('auth-overlay').style.display = 'none';
