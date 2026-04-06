@@ -174,11 +174,11 @@ body::before {
     background: var(--glass);
     border: none;
     border-radius: var(--radius);
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative;
     cursor: pointer;
-    min-height: 85px;
-    height: 85px;
+    min-height: 85px; /* 确保这里是固定的 85px */
+    height: 85px; /* 确保这里是固定的 85px */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -189,7 +189,9 @@ body::before {
 .card:hover {
     background: var(--glass-hover);
     transform: translateY(-2px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    /* 使用主题色 var(--primary) 产生光晕效果 */
+    box-shadow: 0 0 15px rgba(57, 157, 255, 0.5), 0 0 30px rgba(57, 157, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3); /* 强化边缘发光感 */
 }
 
 .card.sortable-ghost {
@@ -653,8 +655,6 @@ body.view-style-2 .nav-grid.active {
 }
 
 body.view-style-2 .card {
-    height: var(--card-w, 85px);
-    min-height: var(--card-w, 85px);
     border-radius: var(--radius);
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -675,20 +675,22 @@ body.view-style-2 .card.has-bg {
 /* 悬浮时光泽效果 */
 body.view-style-2 .card.has-bg:hover {
     transform: translateY(-2px);
-    box-shadow:
-        0 6px 20px rgba(0, 0, 0, 0.25),
-        0 0 0 1px rgba(255, 255, 255, 0.25),
-        0 0 16px rgba(255, 255, 255, 0.1);
+    /* 这里的光晕会叠加在卡片原有阴影上，使其更有厚度 */
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.3), 
+        0 0 15px var(--card-bg-color, rgba(255,255,255,0.2)), /* 随卡片颜色的光晕 */
+        0 0 30px rgba(255, 255, 255, 0.1);
 }
 
 body.view-style-2 .card:not(.has-bg):hover {
     background: rgba(110, 115, 135, 0.32);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow:
-        0 4px 16px rgba(0, 0, 0, 0.2),
-        0 0 0 1px rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.4);
+    /* 白色/浅灰色柔和光晕 */
+    box-shadow: 
+        0 8px 20px rgba(0, 0, 0, 0.3),
+        0 0 15px rgba(255, 255, 255, 0.15);
     transform: translateY(-2px);
 }
 
@@ -789,10 +791,6 @@ body.view-style-2 .card[data-tooltip]::before {
         gap: 12px;
     }
 
-    body.view-style-2 .card {
-        height: calc(var(--card-w, 85px) - 10px);
-        min-height: calc(var(--card-w, 85px) - 10px);
-    }
 }
 
 @media (max-width: 480px) {
