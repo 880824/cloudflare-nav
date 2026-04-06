@@ -77,16 +77,16 @@ body::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 12px;
     margin-bottom: 0;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 8px 15px;
+    padding: 12px 20px;
     scrollbar-width: none;
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
-    border-radius: 25px;
+    border-radius: 35px;
     z-index: 100;
     max-width: calc(100vw - 30px);
 }
@@ -105,14 +105,14 @@ body::before {
 /* 分类按钮 - 毛玻璃风格 */
 .tab-btn {
     white-space: nowrap;                         /* 保证文字不换行 */
-    padding: 5px 15px;                           /* 内边距 */
-    border-radius: 20px;                         /* 药丸状圆角 */
+    padding: 8px 22px;                           /* 内边距 */
+    border-radius: 25px;                         /* 药丸状圆角 */
     border: 1px solid var(--glass-border);       /* 半透明边框 */
     background: var(--glass);                    /* 毛玻璃背景 */
     color: var(--text);                          /* 纯白文字 */
     cursor: pointer;
     transition: all 0.3s ease;                   /* 平滑过渡动画 */
-    font-size: 12px;
+    font-size: 16px;
     font-weight: bold;
     backdrop-filter: blur(10px);                 /* 毛玻璃模糊 */
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);   /* 立体阴影 */
@@ -137,10 +137,10 @@ body::before {
     background: transparent;
     border: 1px dashed var(--glass-border);
     color: var(--text-dim);
-    padding: 6px 12px;
-    border-radius: 20px;
+    padding: 8px 16px;
+    border-radius: 25px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 15px;
     white-space: nowrap;
 }
 
@@ -589,16 +589,16 @@ input::placeholder {
 @media (max-width: 768px) {
     .tab-container {
         top: 1rem;
-        padding: 6px 10px;
-        gap: 5px;
+        padding: 8px 14px;
+        gap: 6px;
     }
 
     .tab-btn {
-        padding: 5px 10px;
-        font-size: 12px;
+        padding: 6px 14px;
+        font-size: 14px;
     }
 
     .container {
-        padding-top: 90px;
+        padding-top: 100px;
     }
 }
