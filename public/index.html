@@ -71,8 +71,21 @@
     <!-- 页脚缓存信息 -->
     <div id="footer-cache" class="footer-info"></div>
     
-    <!-- 浮动操作按钮 -->
+    <!-- 右上角固定面板（样式切换 + 管理员工具） -->
     <div class="fab">
+        <!-- 样式切换按钮组（始终显示） -->
+        <div id="style-switcher" class="style-switcher-panel">
+            <div class="style-switcher-label">样式</div>
+            <button class="style-btn" id="style-btn-0" data-style="0" title="经典图标样式">
+                <i class="ri-grid-fill"></i>
+                <span>默认</span>
+            </button>
+            <button class="style-btn" id="style-btn-2" data-style="2" title="缤纷模式（自定义网格背景色）">
+                <i class="ri-palette-fill"></i>
+                <span>缤纷</span>
+            </button>
+        </div>
+        <!-- 管理员工具按钮 -->
         <div id="admin-tools" style="display:contents"></div>
     </div>
     

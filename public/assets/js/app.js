@@ -1,7 +1,8 @@
 /**
  * ==========================================
- * app.js - 核心前端逻辑 (已深度优化版)
+ * app.js - 核心前端逻辑（升级版 v3）
  * CloudNav 个人导航页主程序
+ * 支持：默认样式（Style 0）与缤纷模式（Style 2）
  * ==========================================
  */
 
@@ -27,9 +28,14 @@ let editingId = null;
 /** @type {number} Toast定时器 */
 let toastTimer = null;
 
-// ==================== 安全与工具函数 ====================
+/**
+ * 当前展示样式
+ * 0 = 默认图标网格（原版）
+ * 2 = 缤纷模式（列表详情 + 用户自定义网格背景色）
+ */
+let currentViewStyle = parseInt(localStorage.getItem('nav_view_style') || '0');
 
-/** 生成 SHA-256 哈希值 (用于前端密码加密) */
+// ==================== 安全与工具函数 ====================
 const hashPassword = async (password) => {
     const msgBuffer = new TextEncoder().encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -47,11 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 全局监听卡片点击，统计访问频次 (用于生成"常去"分类)
+    // 全局监听卡片点击，统计访问频次
     document.getElementById('grid-container').addEventListener('click', (e) => {
         const card = e.target.closest('.card');
         const link = e.target.closest('a');
-        // 排除管理按钮和新增按钮的点击
         if (card && link && !card.classList.contains('card-add-new') && !e.target.closest('.admin-actions')) {
             const id = card.getAttribute('data-id');
             let clicks = JSON.parse(localStorage.getItem('nav_clicks') || '{}');
@@ -60,34 +65,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 初始化样式切换按钮
+    initStyleSwitcher();
+
     // 初始化应用
     init();
 });
 
+// ==================== 样式切换 ====================
+
+/** 初始化样式切换按钮 */
+const initStyleSwitcher = () => {
+    document.querySelectorAll('.style-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const style = parseInt(btn.getAttribute('data-style'));
+            setViewStyle(style);
+        });
+    });
+    // 恢复上次的样式
+    applyViewStyle(currentViewStyle);
+};
+
+/** 切换展示样式 */
+const setViewStyle = (style) => {
+    if (currentViewStyle === style) return; // 相同样式无需处理
+    currentViewStyle = style;
+    localStorage.setItem('nav_view_style', style);
+    applyViewStyle(style);
+    renderNav(); // 重新渲染卡片以匹配新样式的 DOM 结构
+};
+
+/** 应用样式（更新 body class 和按钮高亮） */
+const applyViewStyle = (style) => {
+    document.body.classList.remove('view-style-0', 'view-style-2');
+    if (style !== 0) {
+        document.body.classList.add('view-style-' + style);
+    }
+    document.querySelectorAll('.style-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.getAttribute('data-style')) === style);
+    });
+};
+
 // ==================== 核心函数 ====================
 
-/**
- * 更新网格卡片宽度
- */
 const updateGridWidth = () => {
-    const width = (appData.settings && appData.settings.cardWidth) 
-        ? appData.settings.cardWidth 
+    const width = (appData.settings && appData.settings.cardWidth)
+        ? appData.settings.cardWidth
         : 85;
     document.documentElement.style.setProperty('--card-w', width + 'px');
 };
 
-/** 显示全局加载动画 */
 const showLoader = (text = '正在处理中...') => {
     document.getElementById('global-loading-text').innerText = text;
     document.getElementById('global-loading-overlay').style.display = 'flex';
 };
 
-/** 隐藏全局加载动画 */
 const hideLoader = () => {
     document.getElementById('global-loading-overlay').style.display = 'none';
 };
 
-/** 显示Toast提示 */
 const showToast = (msg = "操作成功", color = "#27ae60") => {
     const toast = document.getElementById('toast');
     toast.innerText = msg;
@@ -97,25 +133,21 @@ const showToast = (msg = "操作成功", color = "#27ae60") => {
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 };
 
-/** 切换骨架屏显示状态 */
 const toggleSkeleton = (show) => {
     document.getElementById('skeleton-screen').style.display = show ? 'block' : 'none';
     document.getElementById('main-content').style.display = show ? 'none' : 'block';
 };
 
-/** 加载背景图片 (带缓存支持) */
 const loadBackground = async (url) => {
     if (!url) return;
     try {
         const bgCacheName = 'nav-bg-cache-v1';
         const cache = await caches.open(bgCacheName);
         const cachedResponse = await cache.match(url);
-
         if (cachedResponse) {
             const blob = await cachedResponse.blob();
             document.body.style.backgroundImage = `url('${URL.createObjectURL(blob)}')`;
         }
-
         fetch(url, { mode: 'cors' }).then(async response => {
             if (response.ok) {
                 await cache.put(url, response.clone());
@@ -128,13 +160,10 @@ const loadBackground = async (url) => {
     } catch (e) {
         const img = new Image();
         img.src = url;
-        img.onload = () => {
-            document.body.style.backgroundImage = `url('${url}')`;
-        };
+        img.onload = () => { document.body.style.backgroundImage = `url('${url}')`; };
     }
 };
 
-/** 应用背景配置（自定义或Bing） */
 const applyBackgroundConfig = () => {
     const customBg = appData.settings?.bgUrl;
     if (customBg) {
@@ -145,19 +174,16 @@ const applyBackgroundConfig = () => {
             loadBackground(customBg);
         }
     } else if (appData.bgUrl) {
-        // 留空则使用后端接口返回的 Bing 壁纸
         loadBackground(appData.bgUrl);
     }
 };
 
-/** 初始化应用数据 */
 const init = async (forceRender = false) => {
     let fetchUrl = '/api/config';
     const gridContainer = document.getElementById('grid-container');
     const localCache = localStorage.getItem('nav_app_data');
     let initialIsAdmin = isAdmin;
 
-    // 优先使用本地缓存快速渲染
     if (localCache) {
         try {
             appData = JSON.parse(localCache);
@@ -167,7 +193,7 @@ const init = async (forceRender = false) => {
             toggleSkeleton(false);
             renderTools();
             renderNav();
-            applyBackgroundConfig(); // 使用新的背景应用逻辑
+            applyBackgroundConfig();
             if (appData.lastUpdated) {
                 document.getElementById('footer-cache').innerText = '最后同步：' + utils.escapeHTML(appData.lastUpdated);
             }
@@ -178,7 +204,6 @@ const init = async (forceRender = false) => {
         toggleSkeleton(true);
     }
 
-    // 从服务器获取最新数据
     try {
         const res = await fetch(fetchUrl, {
             headers: sysToken ? { 'Authorization': sysToken } : {},
@@ -205,8 +230,7 @@ const init = async (forceRender = false) => {
 
         updateGridWidth();
         const isAdminChanged = initialIsAdmin !== isAdmin;
-
-        applyBackgroundConfig(); // 使用新的背景应用逻辑
+        applyBackgroundConfig();
 
         if (forceRender || isDataChanged || isAdminChanged || !localCache) {
             toggleSkeleton(false);
@@ -230,7 +254,6 @@ const init = async (forceRender = false) => {
     }
 };
 
-/** 渲染管理工具按钮 */
 const renderTools = () => {
     const adminToolsContainer = document.getElementById('admin-tools');
     const catManageArea = document.getElementById('cat-manage-area');
@@ -269,30 +292,58 @@ const renderTools = () => {
     }
 };
 
-/** 渲染导航内容 (包含"常去"智能分类) */
+// ==================== 卡片 HTML 生成（多样式） ====================
+
+/**
+ * 生成网站卡片的 innerHTML
+ * @param {Object} item - 网站数据
+ * @param {string} adminHtml - 管理员操作按钮 HTML
+ * @param {number} style - 当前样式（0 或 2）
+ */
+const buildCardInnerHTML = (item, adminHtml, style) => {
+    let fallbackAttr = `onerror="this.outerHTML='<span class=\\'emoji-icon\\'>'+window.utils.getRandomEmoji()+'</span>';"`;
+    const safeIcon = utils.escapeHTML(item.icon);
+    const isImgIcon = item.icon && item.icon.startsWith('http');
+    const iconHtml = isImgIcon
+        ? `<img src="${safeIcon}" loading="lazy" ${fallbackAttr}>`
+        : `<span class="emoji-icon">${safeIcon || '🔗'}</span>`;
+
+    const safeUrl = utils.escapeHTML(item.url);
+    const safeTitle = utils.escapeHTML(item.title);
+
+    if (style === 2) {
+        // 缤纷模式布局：图标在左，标题在右
+        return `${adminHtml}<a href="${safeUrl}" target="_blank">
+            <div class="icon-wrapper">${iconHtml}</div>
+            <div class="card-text-block">
+                <h3>${safeTitle}</h3>
+            </div>
+        </a>`;
+    } else {
+        // 默认网格布局：图标在上，标题在下
+        return `${adminHtml}<a href="${safeUrl}" target="_blank"><div class="icon-wrapper">${iconHtml}</div><h3>${safeTitle}</h3></a>`;
+    }
+};
+
+/** 渲染导航内容 */
 const renderNav = () => {
     const tabs = document.getElementById('tabs');
     const container = document.getElementById('grid-container');
     tabs.innerHTML = '';
     container.innerHTML = '';
 
-    // 获取本地点击数据，判断是否有常去内容
     const clickData = JSON.parse(localStorage.getItem('nav_clicks') || '{}');
     const hasFrequent = Object.keys(clickData).length > 0;
 
-    // 过滤隐藏分类（使用解构避免污染原数据）
     let cats = isAdmin ? [...appData.categories] : appData.categories.filter(c => !c.hidden);
-    
-    // 注入“常去”虚拟分类
+
     if (hasFrequent) {
         cats.unshift({ id: 'VIRTUAL_FREQ', name: '常去', icon: '⭐', hidden: false });
     }
 
-    // 设置默认激活分类
     if (cats.length > 0 && !activeCatId) activeCatId = cats[0].id;
     if (!cats.find(c => c.id === activeCatId) && cats.length > 0) activeCatId = cats[0].id;
 
-    // 渲染分类标签
     cats.forEach((cat) => {
         const btn = document.createElement('button');
         btn.className = 'tab-btn' + (activeCatId === cat.id ? ' active' : '') + (cat.hidden ? ' hidden-item' : '');
@@ -310,7 +361,6 @@ const renderNav = () => {
         grid.id = 'grid-' + activeCat.id;
         grid.className = 'nav-grid active';
 
-        // 卡片点击事件委托
         grid.addEventListener('click', (e) => {
             const actionBtn = e.target.closest('.action-mini');
             if (actionBtn) {
@@ -331,40 +381,35 @@ const renderNav = () => {
         });
 
         const fragment = document.createDocumentFragment();
-        
-        // 针对虚拟分类与普通分类的数据过滤逻辑
+
         let catItems = [];
         if (activeCat.id === 'VIRTUAL_FREQ') {
             const allAvailableItems = appData.items.filter(i => isAdmin || !i.hidden);
             catItems = allAvailableItems
                 .filter(i => clickData[i.id] > 0)
                 .sort((a, b) => (clickData[b.id] || 0) - (clickData[a.id] || 0))
-                .slice(0, 12); // 常去网站最多取前12个
+                .slice(0, 12);
         } else {
             catItems = appData.items.filter(i => i.catId === activeCat.id && (isAdmin || !i.hidden));
         }
 
-        // 渲染卡片
         catItems.forEach((item) => {
             const card = document.createElement('div');
             card.className = 'card' + (item.hidden ? ' hidden-item' : '');
             card.setAttribute('data-id', utils.escapeHTML(item.id));
 
-            let fallbackAttr = `onerror="this.outerHTML='<span class=\\'emoji-icon\\'>'+window.utils.getRandomEmoji()+'</span>';"`;
-            const safeIcon = utils.escapeHTML(item.icon);
-            const iconHtml = (item.icon && item.icon.startsWith('http'))
-                ? `<img src="${safeIcon}" loading="lazy" ${fallbackAttr}>`
-                : `<span class="emoji-icon">${safeIcon || '🔗'}</span>`;
+            // 缤纷模式：应用用户自定义网格背景色
+            if (currentViewStyle === 2 && item.bgColor) {
+                card.style.setProperty('--card-bg-color', item.bgColor);
+                card.classList.add('has-bg');
+            }
 
-            const safeUrl = utils.escapeHTML(item.url);
-            const safeTitle = utils.escapeHTML(item.title);
             const safeDesc = utils.escapeHTML(item.desc || '');
-
+            const safeTitle = utils.escapeHTML(item.title);
             const tooltip = safeDesc ? `${safeTitle}\n${safeDesc}` : safeTitle;
             card.setAttribute('data-tooltip', tooltip);
 
             let adminHtml = '';
-            // 如果是常去分类，不显示编辑/隐藏操作按钮，防止误操作错乱
             if (isAdmin && activeCat.id !== 'VIRTUAL_FREQ') {
                 adminHtml = `<div class="admin-actions">
                     <button class="action-mini" data-action="toggleHide" data-id="${utils.escapeHTML(item.id)}"><i class="ri-eye-${item.hidden ? 'off-' : ''}line"></i></button>
@@ -373,23 +418,31 @@ const renderNav = () => {
                 </div>`;
             }
 
-            card.innerHTML = `${adminHtml}<a href="${safeUrl}" target="_blank"><div class="icon-wrapper">${iconHtml}</div><h3>${safeTitle}</h3></a>`;
+            card.innerHTML = buildCardInnerHTML(item, adminHtml, currentViewStyle);
             fragment.appendChild(card);
         });
 
-        // 新增卡片按钮（常去分类中不显示新增）
+        // 新增卡片按钮
         if (isAdmin && activeCat.id !== 'VIRTUAL_FREQ') {
             const addCard = document.createElement('div');
             addCard.className = 'card card-add-new';
             addCard.style.borderStyle = 'dashed';
-            addCard.innerHTML = '<a href="javascript:void(0)"><div class="icon-wrapper"><div class="emoji-icon">➕</div></div><h3>新增</h3></a>';
+
+            if (currentViewStyle === 2) {
+                addCard.innerHTML = `<a href="javascript:void(0)">
+                    <div class="icon-wrapper"><div class="emoji-icon">➕</div></div>
+                    <div class="card-text-block"><h3>新增</h3></div>
+                </a>`;
+            } else {
+                addCard.innerHTML = '<a href="javascript:void(0)"><div class="icon-wrapper"><div class="emoji-icon">➕</div></div><h3>新增</h3></a>';
+            }
             fragment.appendChild(addCard);
         }
 
         grid.appendChild(fragment);
         container.appendChild(grid);
 
-        // 初始化拖拽排序（常去分类禁用拖拽）
+        // 初始化拖拽排序
         if (isAdmin && typeof Sortable !== 'undefined' && activeCat.id !== 'VIRTUAL_FREQ') {
             new Sortable(grid, {
                 animation: 150,
@@ -401,10 +454,10 @@ const renderNav = () => {
                 onEnd: () => {
                     const newIdOrder = Array.from(grid.querySelectorAll('.card[data-id]'))
                         .map(el => el.getAttribute('data-id'));
-                    
+
                     const currentCatItems = appData.items.filter(i => i.catId === activeCat.id);
                     const sortedCurrentItems = newIdOrder.map(id => currentCatItems.find(i => i.id === id));
-                    
+
                     let newGlobalItems = [];
                     appData.categories.forEach(cat => {
                         if (cat.id === activeCat.id) {
@@ -413,7 +466,7 @@ const renderNav = () => {
                             newGlobalItems.push(...appData.items.filter(i => i.catId === cat.id));
                         }
                     });
-                    
+
                     appData.items = newGlobalItems;
                     saveAll(true);
                 }
@@ -426,7 +479,6 @@ const renderNav = () => {
 
 const debouncedHandleUrlInput = utils.debounce((val) => handleUrlInput(val), 500);
 
-/** 打开项目编辑弹窗 */
 const openItemEdit = (id, catId) => {
     editingType = 'items';
     editingId = id;
@@ -439,7 +491,9 @@ const openItemEdit = (id, catId) => {
     const safeTitle = utils.escapeHTML(item.title);
     const safeIcon = utils.escapeHTML(item.icon);
     const safeDesc = utils.escapeHTML(item.desc || '');
+    const safeBgColor = utils.escapeHTML(item.bgColor || '');
 
+    document.getElementById('edit-title').innerText = id ? '编辑网站' : '新增网站';
     document.getElementById('edit-form-body').innerHTML = `
         <div class="form-row"><label>网站 URL</label><input id="f-url" value="${safeUrl}"></div>
         <div class="form-row"><label>网站名称</label><input id="f-title" value="${safeTitle}"></div>
@@ -473,10 +527,27 @@ const openItemEdit = (id, catId) => {
                 <div id="iconify-results" style="display:flex; flex-wrap:wrap; gap:5px; max-height:80px; overflow-y:auto; margin-top:5px;"></div>
             </div>
         </div>
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px; margin-bottom: 15px;">
+            <label style="font-size:12px;">网格背景色</label>
+            <div style="display:flex; align-items:center; gap:8px; width:100%;">
+                <input type="color" id="f-bg-color" value="${safeBgColor || '#399dff'}" style="width:40px; height:36px; padding:2px; border:none; border-radius:6px; cursor:pointer; background:transparent; flex-shrink:0;">
+                <input id="f-bg-color-text" value="${safeBgColor}" placeholder="如 rgba(57,157,255,0.45) 或 #3b82f6，留空使用默认" style="flex:1;">
+            </div>
+        </div>
         <div class="form-row"><label>归属分类</label>
             <select id="f-cat">${appData.categories.map(c => `<option value="${utils.escapeHTML(c.id)}" ${c.id === item.catId ? 'selected' : ''}>${utils.escapeHTML(c.name)}</option>`).join('')}</select>
         </div>
     `;
+
+    // 背景色取色器与输入框联动
+    const colorInput = document.getElementById('f-bg-color');
+    const colorText = document.getElementById('f-bg-color-text');
+    colorInput.addEventListener('input', () => { colorText.value = colorInput.value; });
+    colorText.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(colorText.value)) {
+            colorInput.value = colorText.value;
+        }
+    });
 
     document.getElementById('f-url').addEventListener('input', (e) => debouncedHandleUrlInput(e.target.value));
     document.getElementById('f-icon').addEventListener('input', (e) => updatePreview(e.target.value));
@@ -486,14 +557,10 @@ const openItemEdit = (id, catId) => {
         const txt = document.getElementById('txt-fav' + num);
         opt.addEventListener('change', () => selectIcon(txt.value));
         txt.addEventListener('click', () => {
-            if (txt.value) {
-                opt.checked = true;
-                selectIcon(txt.value);
-            }
+            if (txt.value) { opt.checked = true; selectIcon(txt.value); }
         });
     });
 
-    // Iconify 搜索事件绑定
     document.getElementById('btn-iconify-search').addEventListener('click', async () => {
         const query = document.getElementById('iconify-search').value.trim();
         if (!query) return;
@@ -546,7 +613,6 @@ const handleUrlInput = (url, autoSelect = true) => {
             document.getElementById('img-fav2').src = icon2;
 
             const currentIconVal = document.getElementById('f-icon').value;
-
             if (autoSelect && !currentIconVal) {
                 document.getElementById('opt-fav1').checked = true;
                 selectIcon(icon1);
@@ -571,10 +637,7 @@ const handleUrlInput = (url, autoSelect = true) => {
 
 const updatePreview = (val) => {
     const box = document.getElementById('preview-box');
-    if (!val) {
-        box.innerHTML = '🔗';
-        return;
-    }
+    if (!val) { box.innerHTML = '🔗'; return; }
     const safeVal = utils.escapeHTML(val);
     if (safeVal.startsWith('http')) {
         let fallbackAttr = `onerror="this.outerHTML='<span class=\\'emoji-icon\\'>'+window.utils.getRandomEmoji()+'</span>';"`;
@@ -584,20 +647,25 @@ const updatePreview = (val) => {
     }
 };
 
-/** 偏好设置管理弹窗 */
 const manageCats = () => {
     editingType = 'cats';
     document.getElementById('edit-title').innerText = '偏好与分类设置';
 
     const currentWidth = (appData.settings && appData.settings.cardWidth) ? appData.settings.cardWidth : 85;
     const currentBg = (appData.settings && appData.settings.bgUrl) ? appData.settings.bgUrl : '';
+    // 判断当前背景是否为十六进制颜色（用于取色器初始值）
+    const bgIsColor = /^#[0-9a-fA-F]{6}$/.test(currentBg);
 
     document.getElementById('edit-form-body').innerHTML = `
         <div class="form-row" style="margin-bottom: 10px;">
             <label>网格宽度</label><input type="number" id="setting-width" value="${currentWidth}"><span style="color:#666; margin-left:10px;">px</span>
         </div>
         <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
-            <label>自定义背景</label><input type="text" id="setting-bg" value="${utils.escapeHTML(currentBg)}" placeholder="填URL或纯色(如#222), 留空使用Bing">
+            <label>自定义背景</label>
+            <div style="display:flex; align-items:center; gap:8px; flex:1;">
+                <input type="color" id="setting-bg-color" value="${bgIsColor ? currentBg : '#222222'}" style="width:40px; height:36px; padding:2px; border:none; border-radius:6px; cursor:pointer; background:transparent; flex-shrink:0;">
+                <input type="text" id="setting-bg" value="${utils.escapeHTML(currentBg)}" placeholder="填URL或纯色(如#222), 留空使用Bing" style="flex:1;">
+            </div>
         </div>
         <div id="cat-list-sort" style="max-height: 300px; overflow-y: auto;">
             ${appData.categories.map((c) => `
@@ -614,9 +682,24 @@ const manageCats = () => {
     `;
 
     document.getElementById('setting-width').addEventListener('input', (e) => changeCardWidth(e.target.value));
-    document.getElementById('setting-bg').addEventListener('change', (e) => {
+
+    const bgColorPicker = document.getElementById('setting-bg-color');
+    const bgTextInput = document.getElementById('setting-bg');
+    // 取色器 → 文字输入框联动
+    bgColorPicker.addEventListener('input', () => {
+        bgTextInput.value = bgColorPicker.value;
         if (!appData.settings) appData.settings = {};
-        appData.settings.bgUrl = e.target.value.trim();
+        appData.settings.bgUrl = bgColorPicker.value;
+        applyBackgroundConfig();
+    });
+    // 文字输入框 → 取色器联动
+    bgTextInput.addEventListener('input', () => {
+        const val = bgTextInput.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+            bgColorPicker.value = val;
+        }
+        if (!appData.settings) appData.settings = {};
+        appData.settings.bgUrl = val;
         applyBackgroundConfig();
     });
     document.getElementById('btn-add-cat').addEventListener('click', addCat);
@@ -632,15 +715,9 @@ const manageCats = () => {
 
     catListSort.addEventListener('click', (e) => {
         const hideBtn = e.target.closest('.btn-cat-hide');
-        if (hideBtn) {
-            e.preventDefault();
-            toggleHide('categories', hideBtn.getAttribute('data-id'));
-        }
+        if (hideBtn) { e.preventDefault(); toggleHide('categories', hideBtn.getAttribute('data-id')); }
         const delBtn = e.target.closest('.btn-cat-del');
-        if (delBtn) {
-            e.preventDefault();
-            deleteObj('categories', delBtn.getAttribute('data-id'));
-        }
+        if (delBtn) { e.preventDefault(); deleteObj('categories', delBtn.getAttribute('data-id')); }
     });
 
     new Sortable(catListSort, {
@@ -651,15 +728,14 @@ const manageCats = () => {
             const newIdOrder = Array.from(catListSort.querySelectorAll('.cat-item-row'))
                 .map(el => el.getAttribute('data-id'));
             appData.categories = newIdOrder.map(id => appData.categories.find(c => c.id === id));
-            
+
             let newGlobalItems = [];
             appData.categories.forEach(cat => {
                 newGlobalItems.push(...appData.items.filter(i => i.catId === cat.id));
             });
             appData.items = newGlobalItems;
-
             renderNav();
-            saveAll(true); 
+            saveAll(true);
         }
     });
 
@@ -687,12 +763,7 @@ const addCat = () => {
     }
     if (nextLetter > 'Z') nextLetter = 'Z' + Date.now().toString().slice(-2);
 
-    appData.categories.push({
-        id: `${nextLetter}01`,
-        name: '新分类',
-        icon: '📁',
-        hidden: false
-    });
+    appData.categories.push({ id: `${nextLetter}01`, name: '新分类', icon: '📁', hidden: false });
     manageCats();
     renderNav();
 };
@@ -703,12 +774,13 @@ const confirmEdit = () => {
         const title = document.getElementById('f-title').value;
         const desc = document.getElementById('f-desc').value;
         const icon = document.getElementById('f-icon').value;
+        const bgColor = document.getElementById('f-bg-color-text').value.trim();
         const catId = document.getElementById('f-cat').value;
 
         if (editingId) {
             const idx = appData.items.findIndex(i => i.id === editingId);
             if (idx > -1) {
-                appData.items[idx] = { ...appData.items[idx], url, title, desc, icon, catId };
+                appData.items[idx] = { ...appData.items[idx], url, title, desc, icon, bgColor, catId };
             }
         } else {
             const catLetter = catId.charAt(0).toUpperCase();
@@ -719,15 +791,7 @@ const confirmEdit = () => {
                 nextNum = Math.max(...ids) + 1;
             }
             const newId = `${catLetter}${String(nextNum).padStart(3, '0')}`;
-            appData.items.push({
-                id: newId,
-                url,
-                title,
-                desc,
-                icon,
-                catId,
-                hidden: false
-            });
+            appData.items.push({ id: newId, url, title, desc, icon, bgColor, catId, hidden: false });
         }
     }
     renderNav();
@@ -757,22 +821,14 @@ const deleteObj = (type, id) => {
 
 const doLogin = async () => {
     showLoader('正在验证管理员身份...');
-    
-    // 修复：使用 .trim() 强行去除首尾可能因复制粘贴或手机输入法带入的隐形空格
     const rawPwd = document.getElementById('auth-input').value.trim();
-    
-    if (!rawPwd) {
-        hideLoader();
-        return showToast("请输入密码", "#e67e22");
-    }
-    
-    // 前端将其转为哈希值后存储并发送，保证不在本地暴露明文
+    if (!rawPwd) { hideLoader(); return showToast("请输入密码", "#e67e22"); }
+
     sysToken = await hashPassword(rawPwd);
     localStorage.setItem('nav_token', sysToken);
     document.getElementById('auth-overlay').style.display = 'none';
 
     await init(true);
-
     hideLoader();
     if (!isAdmin) {
         showToast("验证失败，密码不正确", "#e74c3c");
@@ -780,7 +836,7 @@ const doLogin = async () => {
         sysToken = '';
     } else {
         showToast("已进入管理模式");
-        document.getElementById('auth-input').value = ''; 
+        document.getElementById('auth-input').value = '';
     }
 };
 
@@ -811,31 +867,20 @@ const saveAll = async (silent = false) => {
     try {
         const res = await fetch('/api/config', {
             method: 'POST',
-            headers: {
-                'Authorization': sysToken,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': sysToken, 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToSave)
         });
-
         if (!silent) hideLoader();
-        if (res.ok && !silent) {
-            showToast("保存成功！");
-        } else if (!res.ok && !silent) {
-            showToast("保存失败，权限不足", "#e74c3c");
-        }
+        if (res.ok && !silent) { showToast("保存成功！"); }
+        else if (!res.ok && !silent) { showToast("保存失败，权限不足", "#e74c3c"); }
     } catch (error) {
-        if (!silent) {
-            hideLoader();
-            showToast("网络错误，配置仅保存在本地", "#e67e22");
-        }
+        if (!silent) { hideLoader(); showToast("网络错误，配置仅保存在本地", "#e67e22"); }
     }
 };
 
 const importConfig = (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
@@ -864,32 +909,23 @@ const exportConfig = () => {
         sortedItems.push(...catItems);
     });
 
-    const dataToExport = {
-        settings: appData.settings,
-        categories: appData.categories,
-        items: sortedItems
-    };
-
+    const dataToExport = { settings: appData.settings, categories: appData.categories, items: sortedItems };
     let jsonStr = JSON.stringify(dataToExport, null, 2);
-    jsonStr = jsonStr.replace(/\{[\s\S]*?\}/g, (match) => {
-        return match.replace(/\n\s+/g, ' ');
-    });
+    jsonStr = jsonStr.replace(/\{[\s\S]*?\}/g, (match) => match.replace(/\n\s+/g, ' '));
 
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     a.href = url;
     a.download = `nav-backup-${dateStr}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    
     showToast("配置已按紧凑格式导出");
 };
 
 const resetConfig = async () => {
     if (!confirm('确定恢复默认配置？此操作不可撤销。')) return;
-
     showLoader('正在重置...');
     try {
         const res = await fetch('/api/config', {
@@ -897,7 +933,6 @@ const resetConfig = async () => {
             headers: { 'Authorization': sysToken }
         });
         hideLoader();
-
         if (res.ok) {
             localStorage.removeItem('nav_app_data');
             showToast("已重置为默认配置");

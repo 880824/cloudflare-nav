@@ -6,7 +6,7 @@
  */
 
 // 缓存版本号（更新时需修改）
-const CACHE_NAME = 'nav-cache-v3';
+const CACHE_NAME = 'nav-cache-v6';
 
 // 需要缓存的核心静态资源
 const URLS_TO_CACHE = [
