@@ -276,14 +276,14 @@ body::before {
 }
 
 .card img {
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
     border-radius: 4px;
     object-fit: contain;
 }
 
 .card .emoji-icon {
-    font-size: 36px;
+    font-size: 32px;
 }
 
 .card h3 {
@@ -704,9 +704,9 @@ body.view-style-2 .card a {
 
 /* 缤纷模式: 图标区域 — 无背景，透明底 */
 body.view-style-2 .icon-wrapper {
-    width: 45px;
-    height: 45px;
-    min-width: 45px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
     border-radius: 8px;
     background: transparent;
     display: flex;
@@ -725,7 +725,7 @@ body.view-style-2 .card img {
 }
 
 body.view-style-2 .card .emoji-icon {
-    font-size: 35px;
+    font-size: 32px;
 }
 
 /* 缤纷模式: 文字区域 */
