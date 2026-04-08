@@ -777,7 +777,7 @@ body.view-style-2 .card[data-tooltip]::before {
         top: 1rem;
         padding: 8px 14px;
         gap: 6px;
-        max-width: calc(50vw - 50px);
+        max-width: calc(150vw - 150px);
     }
 
     .tab-btn {
