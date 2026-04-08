@@ -697,7 +697,7 @@ body.view-style-2 .card:not(.has-bg):hover {
 body.view-style-2 .card a {
     flex-direction: row;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 0 4px;
     gap: 10px;
 }
