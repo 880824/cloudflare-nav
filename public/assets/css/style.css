@@ -272,18 +272,18 @@ body::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 4px auto;
+    margin: 2px auto;
 }
 
 .card img {
-    width: 25px;
-    height: 25px;
+    width: 50px;
+    height: 50px;
     border-radius: 6px;
     object-fit: contain;
 }
 
 .card .emoji-icon {
-    font-size: 24px;
+    font-size: 50px;
 }
 
 .card h3 {
@@ -298,7 +298,7 @@ body::before {
     -webkit-box-orient: vertical;
     white-space: normal;
     color: #fff;
-    line-height: 1;
+    line-height: 1.2;
     min-height: 1.5em;
 }
 
