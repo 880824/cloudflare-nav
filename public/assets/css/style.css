@@ -63,7 +63,7 @@ body::before {
 
 /* ==================== 主容器 ==================== */
 .container {
-    max-width: 55rem;
+    max-width: 65rem;
     margin: 0 auto;
     padding: 150px 15px 100px;
     text-align: center;
@@ -90,7 +90,7 @@ body::before {
     backdrop-filter: blur(10px);
     border-radius: 35px;
     z-index: 100;
-    max-width: calc(100vw - 200px);
+    max-width: calc(100vw - 100px);
 }
 
 .tab-container::-webkit-scrollbar {
@@ -585,7 +585,7 @@ input::placeholder {
     gap: 15px;
     margin: 0 auto;
     width: 100%;
-    max-width: 55rem;
+    max-width: 65rem;
     grid-template-columns: repeat(auto-fill, minmax(var(--card-w, 85px), 1fr));
 }
 
@@ -775,7 +775,7 @@ body.view-style-2 .card[data-tooltip]::before {
         top: 1rem;
         padding: 8px 14px;
         gap: 6px;
-        max-width: calc(100vw - 100px);
+        max-width: calc(50vw - 50px);
     }
 
     .tab-btn {
