@@ -216,6 +216,7 @@ body::before {
     justify-content: center;
     padding: 0;
     overflow: hidden;
+    gap: 6px;
 }
 
 /* ==================== 卡片提示框 ==================== */
@@ -273,7 +274,7 @@ body::before {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 2px auto;
+    margin: 2px auto 6px auto;
 }
 
 .card img {
