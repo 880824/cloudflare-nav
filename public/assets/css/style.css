@@ -78,7 +78,7 @@ body::before {
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 12px;
     margin-bottom: 0;
     flex-wrap: nowrap;
@@ -90,7 +90,7 @@ body::before {
     backdrop-filter: blur(10px);
     border-radius: 35px;
     z-index: 100;
-    max-width: calc(100vw - 100px);
+    max-width: 95vw;
 }
 
 .tab-container::-webkit-scrollbar {
@@ -101,6 +101,7 @@ body::before {
     display: flex;
     flex-wrap: nowrap;
     gap: 10px;
+    margin: 0 auto;
 }
 
 /* ==================== 分类按钮样式 ==================== */
@@ -777,12 +778,14 @@ body.view-style-2 .card[data-tooltip]::before {
         top: 1rem;
         padding: 8px 14px;
         gap: 6px;
-        max-width: calc(150vw - 150px);
+        max-width: 95vw;
+        justify-content: flex-start;
     }
 
     .tab-btn {
         padding: 6px 14px;
         font-size: 14px;
+        flex-shrink: 0;
     }
 
     .container {
