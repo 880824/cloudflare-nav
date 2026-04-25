@@ -1,9 +1,8 @@
 /**
  * ==========================================
- * style.css - 核心样式文件（升级版 v4）
- * 支持两种展示风格切换
- * Style 0: 经典图标网格（原版）
- * Style 2: 缤纷模式（列表详情 + 用户自定义背景色）
+ * style.css - 核心样式文件（升级版 v5）
+ * 新增：批量选择、内联编辑、拖拽增强、亮色模式、
+ *        简约模式、响应式优化、GPU加速动画等
  * ==========================================
  */
 
@@ -24,6 +23,10 @@
     /* 圆角与尺寸 */
     --radius: 15px;
     --card-w: 85px;
+
+    /* 背景模糊半径（简约模式会覆盖为 0） */
+    --bg-blur: 10px;
+    --backdrop-opacity: 0.4;
 }
 
 /* ==================== 全局重置 ==================== */
@@ -47,7 +50,7 @@ body {
     transition: background-image 0.8s ease-in-out;
 }
 
-/* 高级磨砂玻璃模糊滤镜 */
+/* 高级磨砂玻璃模糊滤镜（默认 blur 10px，简约模式无模糊） */
 body::before {
     content: '';
     position: fixed;
@@ -55,10 +58,79 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
+    background: rgba(0, 0, 0, var(--backdrop-opacity, 0.4));
+    backdrop-filter: blur(var(--bg-blur, 10px));
+    -webkit-backdrop-filter: blur(var(--bg-blur, 10px));
     z-index: -1;
+    transition: backdrop-filter 0.4s ease, background 0.4s ease;
+}
+
+/* ======= 简约模式（关闭毛玻璃） ======= */
+body.minimal-mode {
+    --bg-blur: 0px;
+    --backdrop-opacity: 0.6;
+}
+
+/* ======= 亮色模式 ======= */
+body.light-theme {
+    --glass: rgba(0, 0, 0, 0.06);
+    --glass-hover: rgba(0, 0, 0, 0.12);
+    --glass-border: rgba(0, 0, 0, 0.12);
+    --text: #1a1a1a;
+    --text-dim: rgba(0, 0, 0, 0.7);
+    background-color: #f0f2f5;
+}
+
+body.light-theme::before {
+    background: rgba(255, 255, 255, 0.55);
+}
+
+body.light-theme.minimal-mode::before {
+    background: rgba(255, 255, 255, 0.75);
+}
+
+body.light-theme .tab-container {
+    background: rgba(255, 255, 255, 0.65);
+}
+
+body.light-theme .modal-content {
+    background: rgba(255, 255, 255, 0.96);
+    color: #1a1a1a;
+}
+
+body.light-theme input,
+body.light-theme select {
+    background: rgba(0, 0, 0, 0.06);
+    color: #1a1a1a;
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+body.light-theme input::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+body.light-theme .style-switcher-panel {
+    background: rgba(255, 255, 255, 0.65);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+body.light-theme .fab-btn {
+    background: rgba(255, 255, 255, 0.6);
+    color: #1a1a1a;
+}
+
+body.light-theme .card h3 {
+    color: #1a1a1a;
+}
+
+body.light-theme .card[data-tooltip]::after {
+    background: rgba(255, 255, 255, 0.97);
+    color: #333;
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .card[data-tooltip]::before {
+    border-top-color: rgba(255, 255, 255, 0.97);
 }
 
 /* ==================== 主容器 ==================== */
@@ -178,45 +250,179 @@ body::before {
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative;
     cursor: pointer;
-    min-height: 85px; /* 确保这里是固定的 85px */
-    height: 85px; /* 确保这里是固定的 85px */
+    min-height: 85px;
+    height: 85px;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    /* 扩大点击热区：整个卡片均可点击 */
+    user-select: none;
+}
+
+/* 按下反馈 */
+.card:active {
+    transform: scale(0.95) !important;
+    transition: transform 0.12s ease !important;
 }
 
 .card:hover {
     background: var(--glass-hover);
     transform: translateY(-2px);
-    /* 使用主题色 var(--primary) 产生光晕效果 */
     box-shadow: 0 0 15px rgba(57, 157, 255, 0.5), 0 0 30px rgba(57, 157, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3); /* 强化边缘发光感 */
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/* ======= 拖拽 Ghost（增强半透明 + 蓝色边框） ======= */
 .card.sortable-ghost {
-    opacity: 0.4;
-    background: var(--primary);
+    opacity: 0.35;
+    background: rgba(57, 157, 255, 0.25) !important;
+    border: 2px dashed var(--primary) !important;
+    transform: scale(1.04);
 }
 
-.card.hidden-item {
-    opacity: 0.3;
-    filter: grayscale(1);
+/* 拖拽选中正在拖动的那个卡片 */
+.card.sortable-chosen {
+    box-shadow: 0 8px 32px rgba(57, 157, 255, 0.55);
+    transform: rotate(2deg) scale(1.06);
+    z-index: 500;
 }
 
-.card a {
-    text-decoration: none;
-    color: inherit;
-    width: 100%;
-    height: 100%;
+/* ======= 批量选择样式 ======= */
+.card.batch-selected {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    background: rgba(57, 157, 255, 0.25) !important;
+}
+
+.card.batch-selected::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 13px;
+    color: var(--primary);
+    font-weight: bold;
+    z-index: 25;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* ======= 批量操作工具栏 ======= */
+#batch-toolbar {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: rgba(20, 20, 30, 0.92);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 40px;
+    padding: 10px 20px;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    z-index: 2500;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    transition: transform 0.35s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.3s;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+#batch-toolbar.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#batch-toolbar .batch-count {
+    font-size: 13px;
+    color: rgba(255,255,255,0.65);
+    font-weight: bold;
+    min-width: 48px;
+}
+
+.batch-action-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    color: #fff;
+    cursor: pointer;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: bold;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.batch-action-btn:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.4);
+}
+
+.batch-action-btn.danger {
+    border-color: rgba(231, 76, 60, 0.5);
+    color: #ff7675;
+}
+
+.batch-action-btn.danger:hover {
+    background: rgba(231, 76, 60, 0.25);
+    border-color: #e74c3c;
+}
+
+.batch-action-btn.cancel-btn {
+    background: transparent;
+    border-color: transparent;
+    color: rgba(255,255,255,0.5);
+    font-weight: normal;
+}
+
+.batch-action-btn.cancel-btn:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+
+/* ======= 键盘排序按钮（管理模式下卡片内） ======= */
+.sort-arrows {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2px;
+    z-index: 22;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.card:hover .sort-arrows {
+    opacity: 1;
+}
+
+.sort-arrow-btn {
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    color: #ccc;
+    cursor: pointer;
+    width: 20px;
+    height: 16px;
+    font-size: 9px;
+    display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.15s;
     padding: 0;
-    overflow: hidden;
-    gap: 6px;
+    line-height: 1;
+}
+
+.sort-arrow-btn:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
 }
 
 /* ==================== 卡片提示框 ==================== */
@@ -268,6 +474,13 @@ body::before {
     transform: translateX(-50%) translateY(0);
 }
 
+/* 移动端长按提示 */
+.card.touch-tooltip::after {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateX(-50%) translateY(0) !important;
+}
+
 /* ==================== 卡片图标与标题（Style 0） ==================== */
 .icon-wrapper {
     height: auto;
@@ -302,6 +515,21 @@ body::before {
     color: #fff;
     line-height: 1.2;
     min-height: 1.5em;
+}
+
+/* ======= 内联标题编辑（管理模式） ======= */
+.card h3.inline-editing {
+    background: rgba(57, 157, 255, 0.15);
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    padding: 1px 4px;
+    outline: none;
+    cursor: text;
+    min-height: 1.5em;
+    min-width: 60px;
+    -webkit-line-clamp: unset;
+    white-space: nowrap;
+    overflow: visible;
 }
 
 /* ==================== 管理操作按钮 ==================== */
@@ -511,6 +739,79 @@ input::placeholder {
     object-fit: contain;
 }
 
+/* ======= 智能图标预览区域 ======= */
+#smart-icon-preview {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.icon-source-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.06);
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 56px;
+}
+
+.icon-source-card:hover {
+    border-color: var(--primary);
+    background: rgba(57,157,255,0.15);
+}
+
+.icon-source-card.selected {
+    border-color: var(--primary);
+    background: rgba(57,157,255,0.25);
+    box-shadow: 0 0 8px rgba(57,157,255,0.4);
+}
+
+.icon-source-card img,
+.icon-source-card .emoji-preview {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-source-card span {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+}
+
+/* ======= Emoji 推荐行 ======= */
+#emoji-recommendations {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.emoji-rec-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.emoji-rec-btn:hover {
+    background: rgba(255,255,255,0.18);
+    transform: scale(1.2);
+}
+
 /* ==================== Toast 提示 ==================== */
 #toast {
     position: fixed;
@@ -599,19 +900,22 @@ input::placeholder {
     overflow: hidden;
 }
 
+/* GPU 加速 shimmer 动画（使用 translateX 代替 left） */
 .skel-anim::after {
     content: '';
     position: absolute;
     top: 0;
-    left: -100%;
+    left: 0;
     width: 50%;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
     animation: shimmer 1.5s infinite;
+    will-change: transform;
 }
 
 @keyframes shimmer {
-    100% { left: 150%; }
+    0%   { transform: translateX(-200%); }
+    100% { transform: translateX(400%); }
 }
 
 /* ==================== 页脚信息 ==================== */
@@ -677,10 +981,9 @@ body.view-style-2 .card.has-bg {
 /* 悬浮时光泽效果 */
 body.view-style-2 .card.has-bg:hover {
     transform: translateY(-2px);
-    /* 这里的光晕会叠加在卡片原有阴影上，使其更有厚度 */
     box-shadow: 
         0 8px 25px rgba(0, 0, 0, 0.3), 
-        0 0 15px var(--card-bg-color, rgba(255,255,255,0.2)), /* 随卡片颜色的光晕 */
+        0 0 15px var(--card-bg-color, rgba(255,255,255,0.2)),
         0 0 30px rgba(255, 255, 255, 0.1);
 }
 
@@ -689,7 +992,6 @@ body.view-style-2 .card:not(.has-bg):hover {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-color: rgba(255, 255, 255, 0.4);
-    /* 白色/浅灰色柔和光晕 */
     box-shadow: 
         0 8px 20px rgba(0, 0, 0, 0.3),
         0 0 15px rgba(255, 255, 255, 0.15);
@@ -704,7 +1006,7 @@ body.view-style-2 .card a {
     gap: 10px;
 }
 
-/* 缤纷模式: 图标区域 — 无背景，透明底 */
+/* 缤纷模式: 图标区域 */
 body.view-style-2 .icon-wrapper {
     width: 45px;
     height: 45px;
@@ -774,6 +1076,13 @@ body.view-style-2 .card[data-tooltip]::before {
 
 
 /* ==================== 响应式设计 ==================== */
+@media (max-width: 1024px) and (min-width: 769px) {
+    /* 平板：适当缩小卡宽以获得更协调的布局 */
+    :root {
+        --card-w: 80px;
+    }
+}
+
 @media (max-width: 768px) {
     .tab-container {
         top: 1rem;
@@ -797,10 +1106,29 @@ body.view-style-2 .card[data-tooltip]::before {
         gap: 12px;
     }
 
+    /* 批量工具栏在移动端宽一些 */
+    #batch-toolbar {
+        padding: 8px 14px;
+        gap: 8px;
+    }
+
+    /* 移动端不显示 hover 触发的上移下移按钮（改为长按触发） */
+    .sort-arrows {
+        display: none;
+    }
 }
 
 @media (max-width: 480px) {
+    /* 手机：减小卡宽以保证每行至少3个 */
+    :root {
+        --card-w: 75px;
+    }
+
     body.view-style-2 .nav-grid.active {
-        grid-template-columns: repeat(auto-fill, minmax(var(--card-w, 85px), 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(var(--card-w, 75px), 1fr));
+    }
+
+    .container {
+        padding-top: 90px;
     }
 }
