@@ -482,12 +482,26 @@ body.light-theme .card[data-tooltip]::before {
 }
 
 /* ==================== 卡片图标与标题（Style 0） ==================== */
+
+/* 默认样式：卡片内链接纵向居中排列 */
+.card a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    text-decoration: none;
+    padding: 6px 4px;
+    gap: 4px;
+}
+
 .icon-wrapper {
     height: auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 2px auto 6px auto;
+    flex-shrink: 0;
 }
 
 .card img {
@@ -499,22 +513,24 @@ body.light-theme .card[data-tooltip]::before {
 
 .card .emoji-icon {
     font-size: 32px;
+    line-height: 1;
 }
 
 .card h3 {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     text-align: center;
-    width: 90%;
+    width: 100%;
+    padding: 0 4px;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
-    -webkit-line-clamp: 1;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     white-space: normal;
-    color: #fff;
-    line-height: 1.2;
-    min-height: 1.5em;
+    color: var(--text);
+    line-height: 1.3;
+    word-break: break-all;
 }
 
 /* ======= 内联标题编辑（管理模式） ======= */
@@ -522,14 +538,16 @@ body.light-theme .card[data-tooltip]::before {
     background: rgba(57, 157, 255, 0.15);
     border: 1px solid var(--primary);
     border-radius: 4px;
-    padding: 1px 4px;
+    padding: 1px 6px;
     outline: none;
     cursor: text;
     min-height: 1.5em;
-    min-width: 60px;
+    min-width: 40px;
     -webkit-line-clamp: unset;
     white-space: nowrap;
     overflow: visible;
+    display: block;
+    width: calc(100% - 8px);
 }
 
 /* ==================== 管理操作按钮 ==================== */
@@ -1002,15 +1020,16 @@ body.view-style-2 .card a {
     flex-direction: row;
     align-items: center;
     justify-content: flex-start;
-    padding: 0 4px;
+    padding: 0 10px 0 12px;
     gap: 10px;
+    height: 100%;
 }
 
 /* 缤纷模式: 图标区域 */
 body.view-style-2 .icon-wrapper {
-    width: 45px;
-    height: 45px;
-    min-width: 45px;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
     border-radius: 8px;
     background: transparent;
     display: flex;
@@ -1022,21 +1041,22 @@ body.view-style-2 .icon-wrapper {
 }
 
 body.view-style-2 .card img {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 5px;
     object-fit: contain;
 }
 
 body.view-style-2 .card .emoji-icon {
-    font-size: 36px;
+    font-size: 30px;
+    line-height: 1;
 }
 
 /* 缤纷模式: 文字区域 */
 body.view-style-2 .card-text-block {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: 0;
     min-width: 0;
     flex: 1;
@@ -1044,19 +1064,18 @@ body.view-style-2 .card-text-block {
 }
 
 body.view-style-2 .card h3 {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     text-align: left;
     margin-left: 0;
+    padding: 0;
     width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    display: -webkit-box;
-    color: #fff;
-    line-height: 1.2;
+    display: block;
+    color: var(--text);
+    line-height: 1.3;
     min-height: unset;
 }
 
