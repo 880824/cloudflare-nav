@@ -695,14 +695,14 @@ const openItemEdit = (id, catId) => {
         </div>
         <div class="form-row"><label style="font-size:12px; font-weight:normal; color:#999;">Favicon.im</label>
             <div style="display:flex; align-items:center; width:100%;">
-                <input type="radio" name="icon_sel" id="opt-fav1" style="width:18px; height:18px; flex-shrink:0; margin:0 10px 0 0; cursor:pointer;">
+                <input type="radio" name="icon_sel" id="opt-fav1" style="width:18px; height:18px; flex-shrink:0; margin:0 6px 0 0; cursor:pointer;">
                 <input id="txt-fav1" readonly placeholder="等待填写 URL 自动解析..." style="flex:1; min-width:0; color:#aaa; font-size:13px; cursor:pointer; background:rgba(0,0,0,0.3);">
                 <div class="preview-container" style="background:rgba(0,0,0,0.3);"><img id="img-fav1" src="" loading="lazy"></div>
             </div>
         </div>
         <div class="form-row"><label style="font-size:12px; font-weight:normal; color:#999;">DuckDuckGo</label>
             <div style="display:flex; align-items:center; width:100%;">
-                <input type="radio" name="icon_sel" id="opt-fav2" style="width:18px; height:18px; flex-shrink:0; margin:0 10px 0 0; cursor:pointer;">
+                <input type="radio" name="icon_sel" id="opt-fav2" style="width:18px; height:18px; flex-shrink:0; margin:0 6px 0 0; cursor:pointer;">
                 <input id="txt-fav2" readonly placeholder="等待填写 URL 自动解析..." style="flex:1; min-width:0; color:#aaa; font-size:13px; cursor:pointer; background:rgba(0,0,0,0.3);">
                 <div class="preview-container" style="background:rgba(0,0,0,0.3);"><img id="img-fav2" src="" loading="lazy"></div>
             </div>
@@ -968,7 +968,7 @@ const manageCats = () => {
         </div>
         <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
             <label>简约模式</label>
-            <div style="display:flex; align-items:flex-start; gap:10px; flex:1;">
+            <div style="display:flex; align-items:flex-start; gap:6px; flex:1;">
                 <input type="checkbox" id="setting-simple-mode" ${simpleMode ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer; margin-top:2px;">
                 <span style="font-size:12px; color:#999; line-height:1.4;">关闭模糊效果（提升低端设备性能）</span>
             </div>

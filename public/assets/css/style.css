@@ -627,6 +627,14 @@ input::placeholder {
     color: rgba(255, 255, 255, 0.5);
 }
 
+/* ==================== 复选框和单选框样式 ==================== */
+input[type="checkbox"],
+input[type="radio"] {
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+}
+
 /* ==================== 图标预览容器 ==================== */
 .preview-container {
     width: 40px;
