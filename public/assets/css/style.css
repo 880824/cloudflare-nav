@@ -586,7 +586,7 @@ body::before {
     background: rgba(30, 30, 30, 0.95);
     width: 90%;
     max-width: 450px;
-    padding: 25px;
+    padding: 20px;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
@@ -597,12 +597,12 @@ body::before {
 .form-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 15px;
+    gap: 6px;
+    margin-bottom: 8px;
 }
 
 .form-row label {
-    width: 85px;
+    width: 70px;
     text-align: left;
     font-size: 13px;
     color: #ccc;

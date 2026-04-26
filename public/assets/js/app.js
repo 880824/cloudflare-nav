@@ -716,7 +716,7 @@ const openItemEdit = (id, catId) => {
                 <div id="iconify-results" style="display:flex; flex-wrap:wrap; gap:5px; max-height:80px; overflow-y:auto; margin-top:5px;"></div>
             </div>
         </div>
-        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px; margin-bottom: 15px;">
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 10px;">
             <label style="font-size:12px; font-weight:normal; color:#999;">智能 Emoji</label>
             <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
                 <div style="display:flex; gap:5px; align-items:center;">
@@ -729,7 +729,7 @@ const openItemEdit = (id, catId) => {
                 </div>
             </div>
         </div>
-        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px; margin-bottom: 15px;">
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 10px;">
             <label style="font-size:12px;">网格背景色</label>
             <div style="display:flex; align-items:center; gap:8px; width:100%;">
                 <input type="color" id="f-bg-color" value="${safeBgColor || '#399dff'}" style="width:40px; height:36px; padding:2px; border:none; border-radius:6px; cursor:pointer; background:transparent; flex-shrink:0;">
@@ -955,18 +955,18 @@ const manageCats = () => {
         <div class="form-row" style="margin-bottom: 10px;">
             <label>网格宽度</label><input type="number" id="setting-width" value="${currentWidth}"><span style="color:#666; margin-left:10px;">px</span>
         </div>
-        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
             <label>自定义背景</label>
             <div style="display:flex; align-items:center; gap:8px; flex:1;">
                 <input type="color" id="setting-bg-color" value="${bgIsColor ? currentBg : '#222222'}" style="width:40px; height:36px; padding:2px; border:none; border-radius:6px; cursor:pointer; background:transparent; flex-shrink:0;">
                 <input type="text" id="setting-bg" value="${utils.escapeHTML(currentBg)}" placeholder="填URL或纯色(如#222), 留空使用Bing" style="flex:1;">
             </div>
         </div>
-        <div class="form-row" style="margin-bottom: 15px;">
+        <div class="form-row" style="margin-bottom: 10px;">
             <label>主题模式</label>
             <select id="setting-theme" style="flex:1;">${themeOptions}</select>
         </div>
-        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px;">
             <label>简约模式</label>
             <div style="display:flex; align-items:flex-start; gap:10px; flex:1;">
                 <input type="checkbox" id="setting-simple-mode" ${simpleMode ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer; margin-top:2px;">
