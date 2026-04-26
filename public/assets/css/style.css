@@ -24,6 +24,138 @@
     /* 圆角与尺寸 */
     --radius: 15px;
     --card-w: 85px;
+
+    /* 背景遮罩透明度 */
+    --bg-overlay-opacity: 0.4;
+}
+
+/* ==================== 亮色模式（Light Theme） ==================== */
+body.light-theme {
+    --glass: rgba(0, 0, 0, 0.08);
+    --glass-hover: rgba(0, 0, 0, 0.15);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --text: #1a1a1a;
+    --text-dim: rgba(0, 0, 0, 0.7);
+    --bg-overlay-opacity: 0.15;
+}
+
+body.light-theme {
+    background-color: #f0f2f5;
+}
+
+body.light-theme::before {
+    background: rgba(255, 255, 255, var(--bg-overlay-opacity));
+}
+
+body.light-theme .tab-container {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .tab-btn {
+    color: #333;
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .tab-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+body.light-theme .card {
+    background: rgba(255, 255, 255, 0.7);
+}
+
+body.light-theme .card:hover {
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 15px rgba(57, 157, 255, 0.3), 0 0 30px rgba(57, 157, 255, 0.1);
+}
+
+body.light-theme .card h3 {
+    color: #333;
+}
+
+body.light-theme .modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme input,
+body.light-theme select {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.15);
+    color: #333;
+}
+
+body.light-theme .style-switcher-panel {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .fab-btn {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+body.light-theme .admin-actions {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+body.light-theme .batch-actions-bar {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .batch-btn.delete {
+    background: rgba(231, 76, 60, 0.9);
+}
+
+body.light-theme .batch-btn.move {
+    background: rgba(57, 157, 255, 0.9);
+}
+
+/* ==================== 简约模式（无模糊 - 提升低端设备性能） ==================== */
+body.no-blur::before {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(0, 0, 0, var(--bg-overlay-opacity));
+}
+
+body.no-blur.light-theme::before {
+    background: rgba(255, 255, 255, var(--bg-overlay-opacity));
+}
+
+body.no-blur .tab-container {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.no-blur .style-switcher-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.no-blur .modal {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.no-blur .card.has-bg,
+body.no-blur body.view-style-2 .card.has-bg {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* 移动端减少阴影以提升性能 */
+@media (max-width: 768px) {
+    .card:hover {
+        box-shadow: 0 0 10px rgba(57, 157, 255, 0.3), 0 0 20px rgba(57, 157, 255, 0.1);
+    }
+
+    body.view-style-2 .card.has-bg:hover {
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), 0 0 10px var(--card-bg-color, rgba(255,255,255,0.15));
+    }
 }
 
 /* ==================== 全局重置 ==================== */
@@ -278,8 +410,8 @@ body::before {
 }
 
 .card img {
-    width: 32px;
-    height: 32px;
+    width: 35px;
+    height: 35px;
     border-radius: 4px;
     object-fit: contain;
 }
@@ -603,7 +735,7 @@ input::placeholder {
     content: '';
     position: absolute;
     top: 0;
-    left: -100%;
+    left: 0;
     width: 50%;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
@@ -611,7 +743,8 @@ input::placeholder {
 }
 
 @keyframes shimmer {
-    100% { left: 150%; }
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
 }
 
 /* ==================== 页脚信息 ==================== */
@@ -627,6 +760,23 @@ input::placeholder {
 }
 
 /* ==================== 拖拽排序相关 ==================== */
+.card.sortable-ghost {
+    opacity: 0.4;
+    background: var(--primary);
+}
+
+.card.sortable-drag {
+    opacity: 0.9;
+    transform: rotate(3deg) scale(1.05);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(57, 157, 255, 0.4);
+    z-index: 1000;
+}
+
+.card.drag-over {
+    transform: translateY(5px);
+    border-color: var(--primary);
+}
+
 .cat-item-row.sortable-ghost {
     background: var(--primary) !important;
     opacity: 0.5;
@@ -637,6 +787,123 @@ input::placeholder {
     color: #666;
     margin-right: 5px;
     font-size: 18px;
+}
+
+/* ==================== 批量选择样式 ==================== */
+.card.selected {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    background: rgba(57, 157, 255, 0.2);
+}
+
+.card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.batch-actions-bar {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 30px;
+    padding: 10px 20px;
+    display: none;
+    gap: 10px;
+    align-items: center;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.batch-actions-bar.visible {
+    display: flex;
+}
+
+.batch-actions-bar span {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    margin-right: 5px;
+}
+
+.batch-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+}
+
+.batch-btn.delete {
+    background: rgba(231, 76, 60, 0.8);
+    color: white;
+}
+
+.batch-btn.move {
+    background: rgba(57, 157, 255, 0.8);
+    color: white;
+}
+
+.batch-btn:hover {
+    transform: scale(1.05);
+}
+
+.batch-btn:active {
+    transform: scale(0.95);
+}
+
+/* ==================== Emoji 推荐选中状态 ==================== */
+.emoji-suggestion {
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 20px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-suggestion.selected {
+    background: rgba(57, 157, 255, 0.4);
+    box-shadow: 0 0 8px rgba(57, 157, 255, 0.5);
+}
+
+body.light-theme .emoji-suggestion {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .emoji-suggestion.selected {
+    background: rgba(57, 157, 255, 0.3);
 }
 
 /* ==================== 布局容器 ==================== */
@@ -720,14 +987,14 @@ body.view-style-2 .icon-wrapper {
 }
 
 body.view-style-2 .card img {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     border-radius: 5px;
     object-fit: contain;
 }
 
 body.view-style-2 .card .emoji-icon {
-    font-size: 32px;
+    font-size: 36px;
 }
 
 /* 缤纷模式: 文字区域 */
@@ -773,8 +1040,79 @@ body.view-style-2 .card[data-tooltip]::before {
 }
 
 
+/* ==================== 跟随系统偏好（亮色/暗色模式自动切换） ==================== */
+@media (prefers-color-scheme: light) {
+    body:not(.light-theme):not(.dark-theme) {
+        --glass: rgba(0, 0, 0, 0.08);
+        --glass-hover: rgba(0, 0, 0, 0.15);
+        --glass-border: rgba(0, 0, 0, 0.1);
+        --text: #1a1a1a;
+        --text-dim: rgba(0, 0, 0, 0.7);
+        --bg-overlay-opacity: 0.15;
+    }
+
+    body:not(.light-theme):not(.dark-theme) {
+        background-color: #f0f2f5;
+    }
+
+    body:not(.light-theme):not(.dark-theme)::before {
+        background: rgba(255, 255, 255, var(--bg-overlay-opacity));
+    }
+
+    body:not(.light-theme):not(.dark-theme) .tab-container {
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    body:not(.light-theme):not(.dark-theme) .tab-btn {
+        color: #333;
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    body:not(.light-theme):not(.dark-theme) .card {
+        background: rgba(255, 255, 255, 0.7);
+    }
+
+    body:not(.light-theme):not(.dark-theme) .card h3 {
+        color: #333;
+    }
+
+    body:not(.light-theme):not(.dark-theme) .modal-content {
+        background: rgba(255, 255, 255, 0.95);
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    body:not(.light-theme):not(.dark-theme) input,
+    body:not(.light-theme):not(.dark-theme) select {
+        background: rgba(255, 255, 255, 0.9);
+        border-color: rgba(0, 0, 0, 0.15);
+        color: #333;
+    }
+
+    body:not(.light-theme):not(.dark-theme) .style-switcher-panel {
+        background: rgba(255, 255, 255, 0.85);
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    body:not(.light-theme):not(.dark-theme) .fab-btn {
+        background: rgba(255, 255, 255, 0.7);
+        border-color: rgba(0, 0, 0, 0.1);
+        color: #333;
+    }
+}
+
 /* ==================== 响应式设计 ==================== */
+@media (max-width: 1024px) {
+    :root {
+        --card-w: 80px;
+    }
+}
+
 @media (max-width: 768px) {
+    :root {
+        --card-w: 75px;
+    }
+
     .tab-container {
         top: 1rem;
         padding: 8px 14px;
@@ -797,10 +1135,48 @@ body.view-style-2 .card[data-tooltip]::before {
         gap: 12px;
     }
 
+    .fab {
+        right: 10px;
+    }
+
+    .style-switcher-panel {
+        padding: 8px 6px;
+    }
+
+    .style-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .fab-btn {
+        width: 40px;
+        height: 40px;
+    }
 }
 
 @media (max-width: 480px) {
-    body.view-style-2 .nav-grid.active {
-        grid-template-columns: repeat(auto-fill, minmax(var(--card-w, 85px), 1fr));
+    :root {
+        --card-w: 70px;
+    }
+
+    .container {
+        padding: 80px 10px 80px;
+    }
+
+    .tab-container {
+        top: 0.5rem;
+        padding: 6px 10px;
+        border-radius: 0;
+    }
+
+    .batch-actions-bar {
+        bottom: 60px;
+        padding: 8px 14px;
+    }
+
+    .batch-btn {
+        padding: 6px 12px;
+        font-size: 12px;
     }
 }
+

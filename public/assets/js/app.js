@@ -1,8 +1,9 @@
 /**
  * ==========================================
- * app.js - 核心前端逻辑（升级版 v3）
+ * app.js - 核心前端逻辑（升级版 v4）
  * CloudNav 个人导航页主程序
  * 支持：默认样式（Style 0）与缤纷模式（Style 2）
+ * 增强：批量操作、主题切换、内联编辑、Emoji智能推荐
  * ==========================================
  */
 
@@ -35,6 +36,18 @@ let toastTimer = null;
  */
 let currentViewStyle = parseInt(localStorage.getItem('nav_view_style') || '0');
 
+/** 批量选择模式状态 */
+let batchSelectMode = false;
+
+/** 已选择的卡片ID集合 */
+let selectedCardIds = new Set();
+
+/** 当前主题模式: 'auto' | 'light' | 'dark' */
+let themeMode = localStorage.getItem('nav_theme_mode') || 'auto';
+
+/** 是否启用简约模式（无模糊） */
+let simpleMode = localStorage.getItem('nav_simple_mode') === 'true';
+
 // ==================== 安全与工具函数 ====================
 const hashPassword = async (password) => {
     const msgBuffer = new TextEncoder().encode(password);
@@ -52,6 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(err => console.log('SW 注册失败:', err));
         });
     }
+
+    // 初始化主题模式
+    initThemeMode();
+
+    // 初始化简约模式
+    initSimpleMode();
 
     // 全局监听卡片点击，统计访问频次
     document.getElementById('grid-container').addEventListener('click', (e) => {
@@ -104,6 +123,60 @@ const applyViewStyle = (style) => {
     document.querySelectorAll('.style-btn').forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.getAttribute('data-style')) === style);
     });
+};
+
+// ==================== 主题切换功能 ====================
+
+/** 初始化主题模式 */
+const initThemeMode = () => {
+    applyThemeMode();
+};
+
+/** 应用主题模式 */
+const applyThemeMode = () => {
+    document.body.classList.remove('light-theme', 'dark-theme');
+    if (themeMode === 'light') {
+        document.body.classList.add('light-theme');
+    } else if (themeMode === 'dark') {
+        document.body.classList.add('dark-theme');
+    }
+};
+
+/** 切换主题模式 */
+const toggleThemeMode = () => {
+    if (themeMode === 'auto') {
+        themeMode = 'light';
+    } else if (themeMode === 'light') {
+        themeMode = 'dark';
+    } else {
+        themeMode = 'auto';
+    }
+    localStorage.setItem('nav_theme_mode', themeMode);
+    applyThemeMode();
+    showToast(`主题: ${getThemeModeLabel()}`);
+};
+
+/** 获取主题模式标签 */
+const getThemeModeLabel = () => {
+    const labels = { auto: '跟随系统', light: '亮色', dark: '暗色' };
+    return labels[themeMode] || '跟随系统';
+};
+
+// ==================== 简约模式功能 ====================
+
+/** 初始化简约模式 */
+const initSimpleMode = () => {
+    if (simpleMode) {
+        document.body.classList.add('no-blur');
+    }
+};
+
+/** 切换简约模式 */
+const toggleSimpleMode = () => {
+    simpleMode = !simpleMode;
+    localStorage.setItem('nav_simple_mode', simpleMode);
+    document.body.classList.toggle('no-blur', simpleMode);
+    showToast(simpleMode ? '已开启简约模式' : '已关闭简约模式');
 };
 
 // ==================== 核心函数 ====================
@@ -325,6 +398,105 @@ const buildCardInnerHTML = (item, adminHtml, style) => {
     }
 };
 
+// ==================== 批量选择功能 ====================
+
+/** 切换卡片选中状态 */
+const toggleCardSelection = (id) => {
+    if (selectedCardIds.has(id)) {
+        selectedCardIds.delete(id);
+    } else {
+        selectedCardIds.add(id);
+    }
+    updateBatchUI();
+    renderNav();
+};
+
+/** 更新批量操作UI */
+const updateBatchUI = () => {
+    let batchBar = document.querySelector('.batch-actions-bar');
+    if (selectedCardIds.size > 0) {
+        if (!batchBar) {
+            batchBar = document.createElement('div');
+            batchBar.className = 'batch-actions-bar';
+            batchBar.innerHTML = `
+                <span>已选 <b id="batch-count">0</b> 项</span>
+                <button class="batch-btn move" id="batch-move-btn">移动到分类</button>
+                <button class="batch-btn delete" id="batch-delete-btn">批量删除</button>
+                <button class="batch-btn" id="batch-cancel-btn" style="background:rgba(150,150,150,0.8); color:white;">取消</button>
+            `;
+            document.body.appendChild(batchBar);
+            
+            document.getElementById('batch-delete-btn').addEventListener('click', batchDelete);
+            document.getElementById('batch-move-btn').addEventListener('click', showBatchMoveDialog);
+            document.getElementById('batch-cancel-btn').addEventListener('click', clearSelection);
+        }
+        batchBar.classList.add('visible');
+        document.getElementById('batch-count').textContent = selectedCardIds.size;
+    } else {
+        if (batchBar) {
+            batchBar.classList.remove('visible');
+        }
+    }
+};
+
+/** 清空选择 */
+const clearSelection = () => {
+    selectedCardIds.clear();
+    updateBatchUI();
+    renderNav();
+};
+
+/** 批量删除 */
+const batchDelete = () => {
+    if (selectedCardIds.size === 0) return;
+    if (!confirm(`确定删除选中的 ${selectedCardIds.size} 个网站？`)) return;
+    
+    appData.items = appData.items.filter(item => !selectedCardIds.has(item.id));
+    clearSelection();
+    saveAll(false);
+    showToast('批量删除成功');
+};
+
+/** 显示批量移动对话框 */
+const showBatchMoveDialog = () => {
+    if (selectedCardIds.size === 0) return;
+    
+    const cats = appData.categories;
+    const catOptions = cats.map(c => `<option value="${c.id}">${utils.escapeHTML(c.icon)} ${utils.escapeHTML(c.name)}</option>`).join('');
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'modal';
+    dialog.style.display = 'flex';
+    dialog.innerHTML = `
+        <div class="modal-content" style="text-align:center">
+            <h3 style="margin-bottom:15px;">移动到分类</h3>
+            <select id="batch-move-cat" style="width:100%; margin-bottom:15px;">${catOptions}</select>
+            <div style="display:flex; gap:10px;">
+                <button class="tab-btn active" id="batch-move-confirm" style="flex:1;">确认移动</button>
+                <button class="tab-btn" id="batch-move-cancel" style="flex:1; background:rgba(150,150,150,0.5);">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(dialog);
+    
+    document.getElementById('batch-move-cancel').addEventListener('click', () => {
+        document.body.removeChild(dialog);
+    });
+    
+    document.getElementById('batch-move-confirm').addEventListener('click', () => {
+        const targetCatId = document.getElementById('batch-move-cat').value;
+        appData.items.forEach(item => {
+            if (selectedCardIds.has(item.id)) {
+                item.catId = targetCatId;
+            }
+        });
+        document.body.removeChild(dialog);
+        clearSelection();
+        saveAll(false);
+        showToast(`已移动 ${selectedCardIds.size} 个网站到目标分类`);
+    });
+};
+
 /** 渲染导航内容 */
 const renderNav = () => {
     const tabs = document.getElementById('tabs');
@@ -412,6 +584,7 @@ const renderNav = () => {
             let adminHtml = '';
             if (isAdmin && activeCat.id !== 'VIRTUAL_FREQ') {
                 adminHtml = `<div class="admin-actions">
+                    <button class="action-mini batch-select-btn" data-id="${utils.escapeHTML(item.id)}"><i class="ri-checkbox-${selectedCardIds.has(item.id) ? 'fill' : 'blank-line'}"></i></button>
                     <button class="action-mini" data-action="toggleHide" data-id="${utils.escapeHTML(item.id)}"><i class="ri-eye-${item.hidden ? 'off-' : ''}line"></i></button>
                     <button class="action-mini" data-action="edit" data-id="${utils.escapeHTML(item.id)}"><i class="ri-edit-line"></i></button>
                     <button class="action-mini" data-action="delete" data-id="${utils.escapeHTML(item.id)}"><i class="ri-delete-bin-line"></i></button>
@@ -419,6 +592,10 @@ const renderNav = () => {
             }
 
             card.innerHTML = buildCardInnerHTML(item, adminHtml, currentViewStyle);
+            
+            if (selectedCardIds.has(item.id)) {
+                card.classList.add('selected');
+            }
             fragment.appendChild(card);
         });
 
@@ -441,6 +618,18 @@ const renderNav = () => {
 
         grid.appendChild(fragment);
         container.appendChild(grid);
+        
+        // 添加批量选择事件监听
+        if (isAdmin && activeCat.id !== 'VIRTUAL_FREQ') {
+            grid.querySelectorAll('.batch-select-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    toggleCardSelection(id);
+                });
+            });
+        }
 
         // 初始化拖拽排序
         if (isAdmin && typeof Sortable !== 'undefined' && activeCat.id !== 'VIRTUAL_FREQ') {
@@ -528,6 +717,19 @@ const openItemEdit = (id, catId) => {
             </div>
         </div>
         <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px; margin-bottom: 15px;">
+            <label style="font-size:12px; font-weight:normal; color:#999;">智能 Emoji</label>
+            <div style="display:flex; flex-direction:column; width:100%; gap:5px;">
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input id="emoji-recommend-title" value="${safeTitle}" placeholder="输入网站名称获取推荐" style="flex:1;">
+                    <button type="button" class="manage-cat-btn" id="btn-emoji-recommend" style="border: 1px solid var(--primary); color: white; background: var(--primary);">推荐</button>
+                    <button type="button" class="manage-cat-btn" id="btn-emoji-refresh" title="换一组" style="padding:8px 12px;">🔄</button>
+                </div>
+                <div id="emoji-results" style="display:flex; flex-wrap:wrap; gap:5px; max-height:60px; overflow-y:auto; margin-top:5px;">
+                    ${safeIcon && !safeIcon.startsWith('http') ? `<span class="emoji-suggestion selected" data-emoji="${safeIcon}">${safeIcon}</span>` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px; margin-bottom: 15px;">
             <label style="font-size:12px;">网格背景色</label>
             <div style="display:flex; align-items:center; gap:8px; width:100%;">
                 <input type="color" id="f-bg-color" value="${safeBgColor || '#399dff'}" style="width:40px; height:36px; padding:2px; border:none; border-radius:6px; cursor:pointer; background:transparent; flex-shrink:0;">
@@ -587,6 +789,94 @@ const openItemEdit = (id, catId) => {
         } catch (e) {
             resBox.innerHTML = '<span style="font-size:12px; color:#e74c3c;">网络或接口错误</span>';
         }
+    });
+
+    const EMOJI_KEYWORDS = {
+        'github': '🐙', 'git': '📦', 'code': '💻', '编程': '💻', '开发': '🛠️',
+        'google': '🔍', 'search': '🔍', '搜索': '🔍',
+        'youtube': '📺', 'video': '🎬', '视频': '🎬', 'music': '🎵', '音乐': '🎵',
+        'twitter': '🐦', 'facebook': '👥', 'social': '🌐', '社交': '🌐',
+        'mail': '📧', 'email': '📧', '邮箱': '📧', 'message': '💬', '消息': '💬',
+        'shop': '🛒', 'store': '🏪', '购物': '🛒', 'buy': '🛍️',
+        'game': '🎮', 'games': '🎲', '游戏': '🎮', 'play': '▶️',
+        'book': '📚', 'read': '📖', 'learn': '📝', '学习': '📚', '教育': '🎓',
+        'news': '📰', 'newspaper': '📰', '新闻': '📰', 'blog': '📝',
+        'weather': '🌤️', 'weather': '🌤️', '天气': '🌤️',
+        'photo': '📷', 'image': '🖼️', '图片': '🖼️', 'camera': '📸',
+        'food': '🍔', 'restaurant': '🍽️', '美食': '🍜', 'eat': '🍕',
+        'travel': '✈️', 'trip': '🧳', '旅行': '🧳', 'map': '🗺️',
+        'money': '💰', 'finance': '💵', 'pay': '💳', '支付': '💳', 'bank': '🏦',
+        'cloud': '☁️', 'cloudflare': '☁️', 'aws': '☁️', 'server': '🖥️',
+        'chat': '💬', 'message': '💬', 'talk': '🗣️', 'ai': '🤖', 'bot': '🤖',
+        'home': '🏠', 'house': '🏡', 'home': '🏠', '生活': '🏠',
+        'work': '💼', 'office': '🏢', 'business': '💼', '工作': '💼',
+        'health': '🏥', 'medical': '🏥', '医院': '🏥', 'doctor': '👨‍⚕️',
+        'sport': '⚽', 'sports': '🏃', '运动': '⚽', 'fitness': '💪',
+        'star': '⭐', 'favorite': '⭐', '收藏': '⭐', 'bookmark': '🔖',
+        'setting': '⚙️', 'config': '🔧', '设置': '⚙️', 'tool': '🛠️',
+        'download': '⬇️', 'upload': '⬆️', 'file': '📁', 'folder': '📁',
+        'link': '🔗', 'connect': '🔗', 'chain': '🔗', '链接': '🔗',
+        'lock': '🔒', 'security': '🔐', 'secure': '🔒', '安全': '🔐',
+        'design': '🎨', 'art': '🎨', 'creative': '🎨', '设计': '🎨',
+        'api': '🔌', 'data': '📊', 'database': '🗄️', '数据': '📊',
+        'terminal': '💻', 'console': '⌨️', 'ssh': '🔐', '命令': '⌨️',
+        'wifi': '📶', 'network': '🌐', 'internet': '🌐', 'web': '🌐',
+        'notification': '🔔', 'bell': '🔔', 'alert': '⚠️', '通知': '🔔',
+        'fire': '🔥', 'hot': '🔥', 'trending': '📈', '热门': '🔥',
+        'bookmark': '🔖', 'save': '💾', 'flag': '🚩', '标记': '🔖'
+    };
+
+    const getRecommendedEmojis = (title) => {
+        const results = new Set();
+        const lowerTitle = title.toLowerCase();
+        for (const [keyword, emoji] of Object.entries(EMOJI_KEYWORDS)) {
+            if (lowerTitle.includes(keyword)) {
+                results.add(emoji);
+            }
+        }
+        if (results.size === 0) {
+            const pool = window.emojiPool ? window.emojiPool.getRandomEmojis(8) : ['🌐', '🔗', '📌', '⭐', '💡', '✨', '🎯', '🚀'];
+            return pool;
+        }
+        const extras = window.emojiPool ? window.emojiPool.getRandomEmojis(4) : ['🌟', '💫', '✨', '🔮'];
+        return [...results, ...extras].slice(0, 8);
+    };
+
+    const renderEmojiSuggestions = (emojis) => {
+        const container = document.getElementById('emoji-results');
+        if (!container) return;
+        container.innerHTML = '';
+        emojis.forEach(emoji => {
+            const span = document.createElement('span');
+            span.className = 'emoji-suggestion';
+            span.textContent = emoji;
+            span.dataset.emoji = emoji;
+            span.style.cssText = 'cursor:pointer; padding:4px 8px; font-size:20px; border-radius:6px; background:rgba(255,255,255,0.1); transition:0.2s;';
+            span.onmouseover = () => span.style.background = 'rgba(57,157,255,0.3)';
+            span.onmouseout = () => span.style.background = 'rgba(255,255,255,0.1)';
+            span.onclick = () => {
+                document.querySelectorAll('.emoji-suggestion').forEach(el => el.classList.remove('selected'));
+                span.classList.add('selected');
+                selectIcon(emoji);
+            };
+            container.appendChild(span);
+        });
+    };
+
+    const recommendEmojis = () => {
+        const title = document.getElementById('emoji-recommend-title').value;
+        const emojis = getRecommendedEmojis(title || safeTitle);
+        renderEmojiSuggestions(emojis);
+    };
+
+    document.getElementById('btn-emoji-recommend').addEventListener('click', recommendEmojis);
+    document.getElementById('btn-emoji-refresh').addEventListener('click', () => {
+        const title = document.getElementById('emoji-recommend-title').value;
+        const emojis = getRecommendedEmojis(title || safeTitle);
+        renderEmojiSuggestions(emojis);
+    });
+    document.getElementById('emoji-recommend-title').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') recommendEmojis();
     });
 
     updatePreview(item.icon);
@@ -653,8 +943,13 @@ const manageCats = () => {
 
     const currentWidth = (appData.settings && appData.settings.cardWidth) ? appData.settings.cardWidth : 85;
     const currentBg = (appData.settings && appData.settings.bgUrl) ? appData.settings.bgUrl : '';
-    // 判断当前背景是否为十六进制颜色（用于取色器初始值）
     const bgIsColor = /^#[0-9a-fA-F]{6}$/.test(currentBg);
+
+    const themeOptions = [
+        { value: 'auto', label: '跟随系统' },
+        { value: 'light', label: '亮色模式' },
+        { value: 'dark', label: '暗色模式' }
+    ].map(opt => `<option value="${opt.value}" ${themeMode === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('');
 
     document.getElementById('edit-form-body').innerHTML = `
         <div class="form-row" style="margin-bottom: 10px;">
@@ -665,6 +960,19 @@ const manageCats = () => {
             <div style="display:flex; align-items:center; gap:8px; flex:1;">
                 <input type="color" id="setting-bg-color" value="${bgIsColor ? currentBg : '#222222'}" style="width:40px; height:36px; padding:2px; border:none; border-radius:6px; cursor:pointer; background:transparent; flex-shrink:0;">
                 <input type="text" id="setting-bg" value="${utils.escapeHTML(currentBg)}" placeholder="填URL或纯色(如#222), 留空使用Bing" style="flex:1;">
+            </div>
+        </div>
+        <div class="form-row" style="margin-bottom: 15px;">
+            <label>主题模式</label>
+            <select id="setting-theme" style="flex:1;">${themeOptions}</select>
+        </div>
+        <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+            <label>简约模式</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="checkbox" id="setting-simple-mode" ${simpleMode ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
+                    <span style="font-size:12px; color:#999;">关闭模糊效果（提升低端设备性能）</span>
+                </label>
             </div>
         </div>
         <div id="cat-list-sort" style="max-height: 300px; overflow-y: auto;">
@@ -682,6 +990,18 @@ const manageCats = () => {
     `;
 
     document.getElementById('setting-width').addEventListener('input', (e) => changeCardWidth(e.target.value));
+
+    document.getElementById('setting-theme').addEventListener('change', (e) => {
+        themeMode = e.target.value;
+        localStorage.setItem('nav_theme_mode', themeMode);
+        applyThemeMode();
+    });
+
+    document.getElementById('setting-simple-mode').addEventListener('change', (e) => {
+        simpleMode = e.target.checked;
+        localStorage.setItem('nav_simple_mode', simpleMode);
+        document.body.classList.toggle('no-blur', simpleMode);
+    });
 
     const bgColorPicker = document.getElementById('setting-bg-color');
     const bgTextInput = document.getElementById('setting-bg');
@@ -962,3 +1282,4 @@ document.getElementById('btn-close-auth').addEventListener('click', () => {
 document.getElementById('btn-confirm-edit').addEventListener('click', confirmEdit);
 document.getElementById('btn-close-edit').addEventListener('click', closeModal);
 document.getElementById('import-file').addEventListener('change', importConfig);
+
