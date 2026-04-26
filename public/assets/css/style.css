@@ -631,7 +631,7 @@ input::placeholder {
 input[type="checkbox"],
 input[type="radio"] {
     margin: 0;
-    padding: 0;
+    padding: 10px;
     flex-shrink: 0;
     width: auto !important;
     min-width: 18px;
