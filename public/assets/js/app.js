@@ -968,11 +968,9 @@ const manageCats = () => {
         </div>
         <div class="form-row" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
             <label>简约模式</label>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
-                    <input type="checkbox" id="setting-simple-mode" ${simpleMode ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer;">
-                    <span style="font-size:12px; color:#999;">关闭模糊效果（提升低端设备性能）</span>
-                </label>
+            <div style="display:flex; align-items:flex-start; gap:10px; flex:1;">
+                <input type="checkbox" id="setting-simple-mode" ${simpleMode ? 'checked' : ''} style="width:18px; height:18px; cursor:pointer; margin-top:2px;">
+                <span style="font-size:12px; color:#999; line-height:1.4;">关闭模糊效果（提升低端设备性能）</span>
             </div>
         </div>
         <div id="cat-list-sort" style="max-height: 300px; overflow-y: auto;">
@@ -1282,4 +1280,3 @@ document.getElementById('btn-close-auth').addEventListener('click', () => {
 document.getElementById('btn-confirm-edit').addEventListener('click', confirmEdit);
 document.getElementById('btn-close-edit').addEventListener('click', closeModal);
 document.getElementById('import-file').addEventListener('change', importConfig);
-

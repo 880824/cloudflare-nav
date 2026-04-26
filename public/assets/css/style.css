@@ -27,6 +27,10 @@
 
     /* 背景遮罩透明度 */
     --bg-overlay-opacity: 0.4;
+
+    /* 网站卡片图标尺寸（可自定义调整） */
+    --icon-size: 32px;
+    --emoji-size: 32px;
 }
 
 /* ==================== 亮色模式（Light Theme） ==================== */
@@ -410,14 +414,14 @@ body::before {
 }
 
 .card img {
-    width: 35px;
-    height: 35px;
+    width: var(--icon-size);
+    height: var(--icon-size);
     border-radius: 4px;
     object-fit: contain;
 }
 
 .card .emoji-icon {
-    font-size: 32px;
+    font-size: var(--emoji-size);
 }
 
 .card h3 {
@@ -973,9 +977,9 @@ body.view-style-2 .card a {
 
 /* 缤纷模式: 图标区域 — 无背景，透明底 */
 body.view-style-2 .icon-wrapper {
-    width: 45px;
-    height: 45px;
-    min-width: 45px;
+    width: calc(var(--icon-size) + 10px);
+    height: calc(var(--icon-size) + 10px);
+    min-width: calc(var(--icon-size) + 10px);
     border-radius: 8px;
     background: transparent;
     display: flex;
@@ -987,14 +991,14 @@ body.view-style-2 .icon-wrapper {
 }
 
 body.view-style-2 .card img {
-    width: 40px;
-    height: 40px;
+    width: var(--icon-size);
+    height: var(--icon-size);
     border-radius: 5px;
     object-fit: contain;
 }
 
 body.view-style-2 .card .emoji-icon {
-    font-size: 36px;
+    font-size: calc(var(--emoji-size) + 4px);
 }
 
 /* 缤纷模式: 文字区域 */
@@ -1179,4 +1183,3 @@ body.view-style-2 .card[data-tooltip]::before {
         font-size: 12px;
     }
 }
-
